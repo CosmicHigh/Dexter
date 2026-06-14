@@ -975,7 +975,6 @@ window.HomeScreen = function () {
   } else {
     var moon = h('span', { style: { color: 'var(--t-secondary)', display: 'inline-flex', verticalAlign: '-3px', marginRight: '9px' } }); moon.appendChild(Ic.moon(24));
     hero.appendChild(h('div', { style: { fontSize: '30px', fontWeight: 700, color: '#fff', letterSpacing: '-0.03em', marginBottom: '7px' } }, moon, 'Rest Day'));
-    hero.appendChild(h('div', { style: { fontSize: '13.5px', color: 'var(--t-secondary)', lineHeight: 1.5, marginBottom: '20px' } }, 'Recovery is where growth happens. Walk 8–10k steps, eat your protein, sleep 7–9 h.'));
     hero.appendChild(h('button', { class: 'tap', style: Object.assign({}, btnGhost, { width: '100%', padding: '14px 0', fontSize: '14px', borderRadius: '999px' }),
       onClick: function () { S.pickDay = true; app.render(); } }, 'Train anyway — pick a day'));
   }
@@ -1600,7 +1599,6 @@ window.EditorSheet = function () {
         chev
       ));
     });
-    body.appendChild(h('div', { style: { fontSize: '11.5px', color: 'var(--t-tertiary)', textAlign: 'center', marginTop: '8px', lineHeight: 1.4 } }, 'Tapping cycles through your days and Rest.'));
     function cycleSlot(i) {
       var order = S.program.days.map(function (d) { return d.id; }).concat(['rest']);
       var cur = S.program.weekPlan[i];
@@ -1700,7 +1698,6 @@ window.ConditioningScreen = function () {
   var screen = h('div', { class: 'screen noscroll ' + app.anim('anim-screen') });
   screen.appendChild(h('div', { style: { marginTop: '6px', marginBottom: '14px' } },
     h('div', { style: { fontSize: '27px', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' } }, 'Cardio'),
-    h('div', { style: { fontSize: '13px', color: 'var(--t-tertiary)', marginTop: '3px' } }, 'Log your treadmill, elliptical & cycling')
   ));
 
   // ── log a session card ──
@@ -1901,7 +1898,6 @@ window.HistoryScreen = function () {
   var screen = h('div', { class: 'screen noscroll ' + app.anim('anim-screen') });
   screen.appendChild(h('div', { style: { marginTop: '6px', marginBottom: '16px' } },
     h('div', { style: { fontSize: '27px', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' } }, 'History'),
-    h('div', { style: { fontSize: '13px', color: 'var(--t-tertiary)', marginTop: '3px' } }, 'Every workout you have logged')
   ));
   if (!dates.length) {
     screen.appendChild(h('div', { class: 'glass-card', style: { padding: '26px 20px', textAlign: 'center' } },
