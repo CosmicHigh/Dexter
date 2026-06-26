@@ -1077,6 +1077,7 @@ window.SessionScreen = function () {
   if (!day || !day.exercises.length) { setTimeout(app.endSession, 0); return h('div'); }
   if (S.curEx >= day.exercises.length) S.curEx = 0;
   var ex = day.exercises[S.curEx];
+  var isCore = ex.rir === '—';
   var entry = app.ensureSessionLog(day.id);
   var rows = entry.sets[ex.id];
   var prev = app.lastRowsFor(ex.id);
@@ -1146,7 +1147,7 @@ window.SessionScreen = function () {
   setsWrap.appendChild(h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '0 10px 2px 4px' } },
     h('div', { class: 'label', style: { width: '26px', fontSize: '8px', color: 'var(--t-quaternary)' } }, 'Set'),
     h('div', { style: { flex: 1, display: 'flex', gap: '8px' } },
-      h('div', { class: 'label', style: { flex: 1, fontSize: '8px', textAlign: 'center', color: 'var(--t-quaternary)' } }, 'Weight'),
+      isCore ? null : h('div', { class: 'label', style: { flex: 1, fontSize: '8px', textAlign: 'center', color: 'var(--t-quaternary)' } }, 'Weight'),
       h('div', { class: 'label', style: { flex: 1, fontSize: '8px', textAlign: 'center', color: 'var(--t-quaternary)' } }, ex.timed ? 'Seconds' : 'Reps')
     ),
     h('div', { class: 'label', style: { width: '42px', fontSize: '8px', textAlign: 'center', color: 'var(--t-quaternary)' } }, 'Done')
@@ -1165,11 +1166,11 @@ window.SessionScreen = function () {
       h('div', { class: 'metric', style: { width: '26px', textAlign: 'center', fontSize: '15px', color: r.done ? 'var(--accent)' : 'var(--t-tertiary)' } }, String(i + 1)),
       h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' } },
         h('div', { style: { display: 'flex', gap: '8px' } },
-          Stepper(+r.w || 0, 2.5, 'kg', function (v) { setRow(i, { w: v }); app.update(); }),
+          isCore ? null : Stepper(+r.w || 0, 2.5, 'kg', function (v) { setRow(i, { w: v }); app.update(); }),
           Stepper(r.r === '' ? (ghost ? +ghost.r : ex.repLow) : +r.r, step, ex.timed ? 's' : '', function (v) { setRow(i, { r: v }); app.update(); })
         ),
         h('div', { style: { fontSize: '10px', color: 'var(--t-quaternary)', paddingLeft: '4px' } },
-          ghost ? 'last: ' + ghost.w + ' kg × ' + ghost.r + (ex.timed ? ' s' : '') : 'no history yet')
+          ghost ? (isCore ? 'last: ' + ghost.r + (ex.timed ? ' s' : ' reps') : 'last: ' + ghost.w + ' kg × ' + ghost.r + (ex.timed ? ' s' : '')) : 'no history yet')
       ),
       h('div', { class: 'tap', style: {
         width: '42px', height: '42px', borderRadius: '999px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
