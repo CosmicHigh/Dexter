@@ -1077,6 +1077,7 @@ window.SessionScreen = function () {
   if (!day || !day.exercises.length) { setTimeout(app.endSession, 0); return h('div'); }
   if (S.curEx >= day.exercises.length) S.curEx = 0;
   var ex = day.exercises[S.curEx];
+  var isCore = ex.rir === '—';
   var entry = app.ensureSessionLog(day.id);
   var rows = entry.sets[ex.id];
   var prev = app.lastRowsFor(ex.id);
@@ -1146,7 +1147,7 @@ window.SessionScreen = function () {
   setsWrap.appendChild(h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '0 10px 2px 4px' } },
     h('div', { class: 'label', style: { width: '26px', fontSize: '8px', color: 'var(--t-quaternary)' } }, 'Set'),
     h('div', { style: { flex: 1, display: 'flex', gap: '8px' } },
-      h('div', { class: 'label', style: { flex: 1, fontSize: '8px', textAlign: 'center', color: 'var(--t-quaternary)' } }, 'Weight'),
+      isCore ? null : h('div', { class: 'label', style: { flex: 1, fontSize: '8px', textAlign: 'center', color: 'var(--t-quaternary)' } }, 'Weight'),
       h('div', { class: 'label', style: { flex: 1, fontSize: '8px', textAlign: 'center', color: 'var(--t-quaternary)' } }, ex.timed ? 'Seconds' : 'Reps')
     ),
     h('div', { class: 'label', style: { width: '42px', fontSize: '8px', textAlign: 'center', color: 'var(--t-quaternary)' } }, 'Done')
@@ -1165,11 +1166,11 @@ window.SessionScreen = function () {
       h('div', { class: 'metric', style: { width: '26px', textAlign: 'center', fontSize: '15px', color: r.done ? 'var(--accent)' : 'var(--t-tertiary)' } }, String(i + 1)),
       h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' } },
         h('div', { style: { display: 'flex', gap: '8px' } },
-          Stepper(+r.w || 0, 2.5, 'kg', function (v) { setRow(i, { w: v }); app.update(); }),
+          isCore ? null : Stepper(+r.w || 0, 2.5, 'kg', function (v) { setRow(i, { w: v }); app.update(); }),
           Stepper(r.r === '' ? (ghost ? +ghost.r : ex.repLow) : +r.r, step, ex.timed ? 's' : '', function (v) { setRow(i, { r: v }); app.update(); })
         ),
         h('div', { style: { fontSize: '10px', color: 'var(--t-quaternary)', paddingLeft: '4px' } },
-          ghost ? 'last: ' + ghost.w + ' kg × ' + ghost.r + (ex.timed ? ' s' : '') : 'no history yet')
+          ghost ? (isCore ? 'last: ' + ghost.r + (ex.timed ? ' s' : ' reps') : 'last: ' + ghost.w + ' kg × ' + ghost.r + (ex.timed ? ' s' : '')) : 'no history yet')
       ),
       h('div', { class: 'tap', style: {
         width: '42px', height: '42px', borderRadius: '999px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1826,11 +1827,15 @@ window.ProgressScreen = function () {
     });
     exCard.appendChild(picker);
     var two = app.lastTwoFor(progPick);
+    var pickEx = null;
+    S.program.days.forEach(function (d) { d.exercises.forEach(function (e) { if (e.id === progPick) pickEx = e; }); });
+    var pickCore = !!(pickEx && pickEx.rir === '—');
+    var pickTimed = !!(pickEx && pickEx.timed);
     if (!two.length) {
       exCard.appendChild(hint('No sets logged for this one yet.'));
     } else {
-      exCard.appendChild(sessionBlock(app, 'This time', two[0], true));
-      if (two[1]) exCard.appendChild(sessionBlock(app, 'Last time', two[1], false));
+      exCard.appendChild(sessionBlock(app, 'This time', two[0], true, pickCore, pickTimed));
+      if (two[1]) exCard.appendChild(sessionBlock(app, 'Last time', two[1], false, pickCore, pickTimed));
       else exCard.appendChild(h('div', { style: { fontSize: '12px', color: 'var(--t-tertiary)', padding: '10px 4px 0', lineHeight: 1.4 } }, 'Do this exercise again next session to compare side by side.'));
     }
   }
@@ -1848,14 +1853,14 @@ function statBlock(n, unit, sub) {
     h('div', { style: { fontSize: '11px', color: 'var(--t-tertiary)', marginTop: '1px' } }, sub)
   );
 }
-function sessionBlock(app, title, sess, accent) {
+function sessionBlock(app, title, sess, accent, isCore, timed) {
   var wrap = h('div', { style: { padding: '12px 4px 4px' } },
     h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' } },
       h('div', { class: 'label', style: { fontSize: '9px', color: accent ? 'var(--accent)' : 'var(--t-tertiary)' } }, title),
       h('div', { style: { fontSize: '11px', color: 'var(--t-tertiary)' } }, app.friendlyDate(sess.date))));
   var line = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '7px' } });
   sess.rows.forEach(function (r) {
-    var txt = (+r.w > 0 ? r.w + ' kg × ' + r.r : r.r + ' reps');
+    var txt = isCore ? (r.r + (timed ? ' s' : ' reps')) : (+r.w > 0 ? r.w + ' kg × ' + r.r : r.r + ' reps');
     line.appendChild(h('div', { style: { padding: '7px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, color: accent ? '#fff' : 'var(--t-secondary)', background: accent ? 'rgba(90,200,250,0.1)' : 'rgba(255,255,255,0.05)', border: accent ? '0.5px solid rgba(90,200,250,0.2)' : '0.5px solid rgba(255,255,255,0.08)' } }, txt));
   });
   wrap.appendChild(line);
@@ -1939,17 +1944,19 @@ window.DayDetailSheet = function () {
   var body = h('div', { class: 'noscroll', style: { flex: 1, overflowY: 'auto', marginTop: '14px' } });
   var order = day ? day.exercises.map(function (e) { return e.id; }) : Object.keys(entry.sets);
   Object.keys(entry.sets || {}).forEach(function (id) { if (order.indexOf(id) < 0) order.push(id); });
-  var nameById = {}; if (day) day.exercises.forEach(function (e) { nameById[e.id] = e.name; });
+  var nameById = {}; var metaById = {}; if (day) day.exercises.forEach(function (e) { nameById[e.id] = e.name; metaById[e.id] = e; });
   order.forEach(function (exId) {
     var rows = (entry.sets || {})[exId] || [];
     var done = rows.filter(app.setCounts);
     var name = nameById[exId] || prettyId2(exId);
+    var meta = metaById[exId];
+    var isCore = meta && meta.rir === '—';
     var tile = h('div', { class: 'glass-tile', style: { padding: '13px 14px', marginBottom: '8px', background: 'rgba(255,255,255,0.05)', border: '0.5px solid rgba(255,255,255,0.08)', opacity: done.length ? 1 : 0.5 } },
       h('div', { style: { fontSize: '14px', fontWeight: 600, color: '#fff', marginBottom: done.length ? '8px' : '0' } }, name));
     if (done.length) {
       var line = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } });
       done.forEach(function (r) {
-        line.appendChild(h('div', { style: { padding: '5px 10px', borderRadius: '9px', fontSize: '12.5px', fontWeight: 600, color: 'var(--t-secondary)', background: 'rgba(255,255,255,0.06)' } }, (+r.w > 0 ? r.w + ' kg × ' + r.r : r.r + ' reps')));
+        line.appendChild(h('div', { style: { padding: '5px 10px', borderRadius: '9px', fontSize: '12.5px', fontWeight: 600, color: 'var(--t-secondary)', background: 'rgba(255,255,255,0.06)' } }, isCore ? (r.r + (meta && meta.timed ? ' s' : ' reps')) : (+r.w > 0 ? r.w + ' kg × ' + r.r : r.r + ' reps')));
       });
       tile.appendChild(line);
     } else { tile.appendChild(h('div', { style: { fontSize: '11.5px', color: 'var(--t-quaternary)' } }, 'skipped')); }
