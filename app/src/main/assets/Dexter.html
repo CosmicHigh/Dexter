@@ -607,6 +607,8 @@ var S = {
   modal: null,             // {type:'progression'|'reference', ex, dayId}
   editor: null,            // {view:'program'|'day'|'ex'|'addex'|'week'|'newday'|'move'|'renameday', dayId, exId}
   pickDay: false,          // rest-day "train anyway" picker
+  progPickOpen: false,     // per-exercise picker sheet (Progress tab)
+  progPick: null,          // selected exercise id in the Progress tab
   importOpen: false,
   toast: null,
   progFired: {},           // per-session progression-fired flags
@@ -834,6 +836,7 @@ function render() {
   if (S.inSession) appendKid(rootEl, window.SessionScreen());
   if (S.editor) appendKid(rootEl, window.EditorSheet());
   if (S.pickDay) appendKid(rootEl, window.PickDaySheet());
+  if (S.progPickOpen) appendKid(rootEl, window.ExercisePickerSheet());
   if (S.modal) appendKid(rootEl, window.Modal());
   if (S.importOpen) appendKid(rootEl, window.ImportSheet());
   if (S.settings) appendKid(rootEl, window.SettingsSheet());
@@ -1066,6 +1069,30 @@ window.PickDaySheet = function () {
         h('div', { style: { fontSize: '11px', color: 'var(--t-tertiary)', marginTop: '2px' } }, (d.tag ? d.tag + ' · ' : '') + d.exercises.length + ' exercises')
       ), chev));
   });
+  wrap.appendChild(sheet);
+  return wrap;
+};
+
+// ── Per-exercise picker sheet (Progress tab) ──
+window.ExercisePickerSheet = function () {
+  var app = A(); var S = app.S;
+  function close() { S.progPickOpen = false; app.render(); }
+  var wrap = h('div', { class: 'sheet-wrap ' + app.anim('anim-fade') });
+  wrap.appendChild(h('div', { class: 'sheet-backdrop', onClick: close }));
+  var sheet = h('div', { class: 'glass-modal ' + app.anim('anim-sheet'), style: sheetBase },
+    grabber(),
+    h('div', { style: { fontSize: '21px', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em', marginBottom: '16px' } }, 'Pick an exercise')
+  );
+  var list = h('div', { class: 'noscroll', style: { maxHeight: '54vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' } });
+  app.allLoggedExercises().forEach(function (e) {
+    var active = e.id === S.progPick;
+    var chev = h('div', { style: { color: active ? 'var(--accent)' : 'var(--t-quaternary)', flexShrink: 0 } }); chev.appendChild(Ic.chevR(16));
+    list.appendChild(h('div', { class: 'glass-tile tap', style: { display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 15px', marginBottom: '9px', border: active ? '0.5px solid rgba(90,200,250,0.4)' : undefined },
+      onClick: function () { S.progPick = e.id; S.progPickOpen = false; app.render(); } },
+      h('div', { style: { flex: 1, fontSize: '15px', fontWeight: 600, color: active ? 'var(--accent)' : '#fff' } }, e.name),
+      chev));
+  });
+  sheet.appendChild(list);
   wrap.appendChild(sheet);
   return wrap;
 };
@@ -1793,12 +1820,11 @@ window.ConditioningScreen = function () {
 };
 
 // ── Progress ──
-var progPick = null;
 window.ProgressScreen = function () {
   var app = A(); var S = app.S;
   var exList = app.allLoggedExercises();
-  if (progPick == null || !exList.filter(function (e) { return e.id === progPick; }).length) {
-    progPick = exList.length ? exList[0].id : null;
+  if (S.progPick == null || !exList.filter(function (e) { return e.id === S.progPick; }).length) {
+    S.progPick = exList.length ? exList[0].id : null;
   }
   var thisWeek = app.workoutsInLast(7);
   var thisMonth = app.workoutsInLast(30);
@@ -1818,25 +1844,40 @@ window.ProgressScreen = function () {
   var exCard = h('div', { class: 'glass-card', style: { padding: '18px 16px 16px', marginTop: '12px' } },
     app.label('Per exercise', { padding: '0 4px', marginBottom: '12px' }));
   if (!exList.length) {
-    exCard.appendChild(hint('Once you log a workout, pick any exercise here to see what you did last time versus this time.'));
+    exCard.appendChild(hint('Once you log a workout, pick any exercise here to see your strength trend and what you did last time versus this time.'));
   } else {
-    var picker = h('div', { class: 'noscroll', style: { display: 'flex', gap: '7px', overflowX: 'auto', marginBottom: '16px', paddingBottom: '2px' } });
-    exList.forEach(function (e) {
-      var active = e.id === progPick;
-      picker.appendChild(h('div', { class: 'tap ' + (active ? 'accent-capsule' : ''), style: { flexShrink: 0, padding: '7px 13px', borderRadius: '999px', fontSize: '11.5px', fontWeight: 600, whiteSpace: 'nowrap', color: active ? '#fff' : 'var(--t-secondary)', background: active ? undefined : 'rgba(255,255,255,0.05)', border: active ? undefined : '0.5px solid rgba(255,255,255,0.1)' }, onClick: function () { progPick = e.id; app.update(); } }, e.name));
-    });
-    exCard.appendChild(picker);
-    var two = app.lastTwoFor(progPick);
+    // tap-to-open exercise selector (replaces horizontal pill scroller)
+    var curName = (exList.filter(function (e) { return e.id === S.progPick; })[0] || exList[0]).name;
+    var dchev = h('div', { style: { color: 'var(--t-tertiary)', flexShrink: 0, transform: 'rotate(90deg)' } }); dchev.appendChild(Ic.chevR(16));
+    exCard.appendChild(h('div', { class: 'glass-tile tap', style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', marginBottom: '16px' },
+      onClick: function () { S.progPickOpen = true; app.render(); } },
+      h('div', { style: { flex: 1, fontSize: '14.5px', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, curName),
+      dchev));
+
+    // core (bodyweight) / timed movements have no external load — skip weight-based views
     var pickEx = null;
-    S.program.days.forEach(function (d) { d.exercises.forEach(function (e) { if (e.id === progPick) pickEx = e; }); });
+    S.program.days.forEach(function (d) { d.exercises.forEach(function (e) { if (e.id === S.progPick) pickEx = e; }); });
     var pickCore = !!(pickEx && pickEx.rir === '—');
     var pickTimed = !!(pickEx && pickEx.timed);
-    if (!two.length) {
-      exCard.appendChild(hint('No sets logged for this one yet.'));
-    } else {
+    var weighted = !pickCore && !pickTimed;
+
+    // est-1RM trend chart + headline (weight-based)
+    if (weighted) exCard.appendChild(e1rmBlock(app, S.progPick));
+
+    var two = app.lastTwoFor(S.progPick);
+    if (two.length) {
+      // key-metric tiles (top set, volume) with deltas vs last time
+      if (weighted) {
+        var tiles = exMetricTiles(app, two[0], two[1]);
+        if (tiles) exCard.appendChild(tiles);
+      }
+      // de-noised this/last comparison
       exCard.appendChild(sessionBlock(app, 'This time', two[0], true, pickCore, pickTimed));
       if (two[1]) exCard.appendChild(sessionBlock(app, 'Last time', two[1], false, pickCore, pickTimed));
       else exCard.appendChild(h('div', { style: { fontSize: '12px', color: 'var(--t-tertiary)', padding: '10px 4px 0', lineHeight: 1.4 } }, 'Do this exercise again next session to compare side by side.'));
+    } else if (!weighted) {
+      // weighted exercises already show an empty hint via e1rmBlock
+      exCard.appendChild(hint('No sets logged for this one yet.'));
     }
   }
   screen.appendChild(exCard);
@@ -1859,12 +1900,77 @@ function sessionBlock(app, title, sess, accent, isCore, timed) {
       h('div', { class: 'label', style: { fontSize: '9px', color: accent ? 'var(--accent)' : 'var(--t-tertiary)' } }, title),
       h('div', { style: { fontSize: '11px', color: 'var(--t-tertiary)' } }, app.friendlyDate(sess.date))));
   var line = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '7px' } });
-  sess.rows.forEach(function (r) {
+  sess.rows.filter(function (r) { return +r.r > 0; }).forEach(function (r) {
     var txt = isCore ? (r.r + (timed ? ' s' : ' reps')) : (+r.w > 0 ? r.w + ' kg × ' + r.r : r.r + ' reps');
     line.appendChild(h('div', { style: { padding: '7px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, color: accent ? '#fff' : 'var(--t-secondary)', background: accent ? 'rgba(90,200,250,0.1)' : 'rgba(255,255,255,0.05)', border: accent ? '0.5px solid rgba(90,200,250,0.2)' : '0.5px solid rgba(255,255,255,0.08)' } }, txt));
   });
   wrap.appendChild(line);
   return wrap;
+}
+// ── per-exercise est-1RM headline + trend chart ──
+function e1rmBlock(app, exId) {
+  var series = app.seriesFor(exId);
+  var wrap = h('div', { style: { padding: '2px 4px 4px' } });
+  if (!series.length) { wrap.appendChild(hint('No sets logged for this one yet.')); return wrap; }
+  var cur = series[series.length - 1].w;
+  var head = h('div', { style: { display: 'flex', alignItems: 'baseline', gap: '6px' } },
+    h('span', { class: 'metric', style: { fontSize: '30px', color: '#fff' } }, String(cur)),
+    h('span', { style: { fontSize: '13px', color: 'var(--t-secondary)' } }, 'kg'),
+    app.label('est. 1RM', { fontSize: '9px', marginLeft: '4px' }));
+  if (series.length >= 2) head.appendChild(deltaBadge(Math.round((cur - series[series.length - 2].w) * 10) / 10, 'kg', { marginLeft: 'auto' }));
+  wrap.appendChild(head);
+  var W = 320, H = 120, Pd = 14, ns = 'http://www.w3.org/2000/svg';
+  if (series.length >= 2) {
+    var vals = series.map(function (s) { return s.w; });
+    var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals), rng = (max - min) || 1;
+    var pts = vals.map(function (v, i) { return [Pd + (i / (vals.length - 1)) * (W - Pd * 2), Pd + (1 - (v - min) / rng) * (H - Pd * 2)]; });
+    var dpath = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
+    var dots = pts.map(function (p, i) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (i === pts.length - 1 ? 4 : 2.2) + '" fill="#5AC8FA"/>'; }).join('');
+    var svg = document.createElementNS(ns, 'svg'); svg.setAttribute('width', '100%'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.style.display = 'block'; svg.style.marginTop = '4px';
+    svg.innerHTML = '<path d="' + dpath + '" fill="none" stroke="url(#e1g)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 2px 6px rgba(90,200,250,0.35))"/>' + dots +
+      '<defs><linearGradient id="e1g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0A84FF"/><stop offset="1" stop-color="#5AC8FA"/></linearGradient></defs>';
+    wrap.appendChild(svg);
+  } else {
+    wrap.appendChild(hint('Log this again on another day to see the trend.'));
+  }
+  return wrap;
+}
+// small ▲/▼/– change badge
+function deltaBadge(d, unit, extra) {
+  var up = d > 0, flat = d === 0;
+  var col = flat ? 'var(--t-tertiary)' : (up ? 'var(--accent)' : 'var(--red)');
+  var txt = flat ? '–' : ((up ? '▲ ' : '▼ ') + Math.abs(d) + (unit ? ' ' + unit : ''));
+  var st = { fontSize: '11.5px', fontWeight: 600, color: col }; if (extra) for (var k in extra) st[k] = extra[k];
+  return h('div', { style: st }, txt);
+}
+// key-metric tiles for two sessions: top set + volume, with deltas vs last time
+function exMetricTiles(app, cur, prev) {
+  function stats(sess) {
+    if (!sess) return null;
+    var top = null, vol = 0;
+    sess.rows.forEach(function (r) {
+      if (!(+r.r > 0)) return;
+      vol += (+r.w || 0) * (+r.r);
+      if (!top || (+r.w) > (+top.w)) top = r;
+    });
+    return top ? { top: top, vol: vol } : null;
+  }
+  var c = stats(cur); if (!c) return null;
+  var p = stats(prev);
+  function fmtVol(v) { return v >= 1000 ? (Math.round(v / 100) / 10) + 'k' : String(Math.round(v)); }
+  function tile(lbl, big, badge) {
+    var t = h('div', { class: 'glass-tile', style: { flex: 1, padding: '11px 12px' } },
+      app.label(lbl, { fontSize: '9px', marginBottom: '5px' }),
+      h('div', { style: { fontSize: '15px', fontWeight: 700, color: '#fff' } }, big));
+    if (badge) t.appendChild(badge);
+    return t;
+  }
+  var topTxt = (+c.top.w > 0 ? c.top.w + ' kg × ' + c.top.r : c.top.r + ' reps');
+  var topBadge = p ? deltaBadge(Math.round((+c.top.w - +p.top.w) * 10) / 10, 'kg', { marginTop: '4px' }) : null;
+  var volBadge = p ? deltaBadge(Math.round(c.vol - p.vol), 'kg', { marginTop: '4px' }) : null;
+  return h('div', { style: { display: 'flex', gap: '8px', margin: '4px 0 6px' } },
+    tile('Top set', topTxt, topBadge),
+    tile('Volume', fmtVol(c.vol) + ' kg', volBadge));
 }
 function bodyweightCard(app) {
   var P = app.getPersisted();
