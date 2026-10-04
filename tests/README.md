@@ -11,12 +11,17 @@ The tests load the real Component logic and vendored React from the Android HTML
 
 The presentation suite verifies that the React, ReactDOM and DC runtime script bodies remain byte-for-byte identical to commit `3d8b0437445f5d7977edf2c1261cdaee45b61f3c`. It also exercises the independent accessibility preference store, malformed or unavailable storage, OS/local reduction rules, actual Settings switch handlers, and unchanged workout saves, version-3 exports and legacy restores.
 
-For browser checks, install Playwright and its Chromium browser in your development environment, then run:
+For browser checks, install Playwright, pngjs (pixel sampling), and Chromium in your development environment, then run:
 
 ```sh
+npm install --no-save playwright pngjs
+npx playwright install chromium
 node tests/browser-smoke.cjs
 node tests/presentation-interactions.cjs
+node tests/material-optics-browser.cjs
 ```
+
+The material optics runner measures rendered pixels from the production surface selectors and tokens. It compares striped scenery with blur enabled/disabled, changes blue scenery to orange to reject opaque or painted materials, verifies opaque reductions, and checks that medium/large sheets keep the same material. Its captures and JSON report go to `DEXTER_EVIDENCE_DIR`, or the temporary `dexter-material-optics` directory. This test does not certify native refraction, visual quality, text contrast across every screen, or mobile GPU performance. The focused interaction runner samples the rendered Done button background for icon contrast instead of treating its translucent CSS fill as an opaque colour.
 
 An existing Chromium installation can be selected with `DEXTER_CHROMIUM_PATH`. Screenshots are written to the system temporary directory, or to `DEXTER_SCREENSHOT_DIR` if set. The browser check starts a local HTTP server and reproduces the Android asset's behavior by disabling the runtime's optional self-fetch, which fails under Android's `file://` origin.
 

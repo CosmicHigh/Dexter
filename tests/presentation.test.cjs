@@ -220,3 +220,50 @@ test('complete and undo buttons route to the live workout row without animation 
   assert.equal(row.done, false);
   assert.equal(row.r, exercise.repLow, 'Undo retains the existing repetition value');
 });
+
+test('navigation drag follows intermediate finger positions without committing the route', () => {
+  const { app, context } = fixture();
+  const properties = new Map();
+  let captured = false;
+  const nav = {
+    dataset: {}, style: { setProperty: (key, value) => properties.set(key, value) },
+    getBoundingClientRect: () => ({ left: 20, width: 350 }),
+    setPointerCapture() { captured = true; },
+    hasPointerCapture() { return captured; }, releasePointerCapture() { captured = false; },
+  };
+  app._nodes.nav = nav;
+  app._navRects = ['today', 'conditioning', 'progress', 'history'].map((id, i) => ({ id, x: 5 + i * 85, width: 80, center: 65 + i * 85 }));
+  nav.querySelectorAll = () => app._navRects.map(row => ({ dataset: { tab: row.id }, getBoundingClientRect: () => ({ left: row.x + 16, width: 88 }) }));
+  context.window.innerHeight = 844;
+  app._nodes.root = { style: { setProperty() {} } };
+  const event = x => ({ button: 0, pointerId: 7, clientX: x, currentTarget: nav });
+  app.navPointerDown(event(65));
+  app.navPointerMove(event(128));
+  assert.equal(app.state.tab, 'today', 'Previewing a tab must not replace the active screen');
+  assert.equal(properties.get('--nav-x'), '68px', 'The indicator must follow the finger between tab centres');
+  app.navPointerMove(event(139));
+  assert.equal(properties.get('--nav-x'), '79px', 'Movement within one tab must still move the indicator');
+  app.syncGeometry();
+  assert.equal(properties.get('--nav-x'), '79px', 'Unrelated updates or resizing must retain the held finger position');
+  app.navPointerEnd(event(139), true);
+  assert.equal(app.state.tab, 'today', 'Cancellation must preserve the route');
+  assert.equal(properties.get('--nav-x'), '5px', 'Cancellation settles at the original tab');
+  assert.equal(captured, false, 'Cancellation releases pointer capture');
+});
+
+test('the accent chooser shows six distinct colours and persists the chosen accent', () => {
+  const { app, storage } = fixture();
+  for (const theme of ['dark', 'light']) {
+    app.state.theme = theme;
+    const tree = nodes(app.settingsSheet());
+    const swatches = tree.filter(node => (node.props?.className || '').split(' ').includes('accent-dot'));
+    assert.equal(swatches.length, 6);
+    assert.equal(new Set(swatches.map(node => node.props.style.background)).size, 6, 'Distinct choices must not inherit one common glass tint');
+    const choose = tree.find(node => node.type === 'button' && node.props?.['aria-label'] === 'teal');
+    choose.props.onClick();
+    assert.equal(app.state.accentKey, 'teal');
+    assert.equal(JSON.parse(storage.get(WORKOUT_KEY)).accentKey, 'teal');
+    const after = nodes(app.settingsSheet()).find(node => node.type === 'button' && node.props?.['aria-label'] === 'teal');
+    assert.equal(after.props['aria-pressed'], true);
+  }
+});

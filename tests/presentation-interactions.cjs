@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { chromium } = require('playwright');
+const { PNG } = require('pngjs');
 
 async function appCall(page, action) {
   return page.evaluate(source => {
@@ -109,8 +110,16 @@ async function main() {
       if (theme === 'light') await appCall(page, app => { app.state.theme = 'light'; app.go({ editor: { view: 'program' } }); });
       else await appCall(page, app => { app.state.theme = 'dark'; app.go({ editor: { view: 'program' } }); });
       const done = page.getByRole('dialog').getByRole('button', { name: 'Done', exact: true });
-      const colors = await done.evaluate(element => { const style = getComputedStyle(element); return { foreground: style.color, background: style.backgroundColor }; });
-      assert.ok(contrast(colors.foreground, colors.background) >= 3, `${theme}: the only Done action must have at least 3:1 icon contrast`);
+      await settled(page);
+      const foreground = await done.evaluate(element => getComputedStyle(element).color);
+      // A translucent CSS fill is not the rendered background. Measure the
+      // composite beside the glyph, including the scene and sheet beneath it.
+      const bitmap = PNG.sync.read(await done.screenshot());
+      for (const [x, y] of [[.5, .17], [.17, .5], [.83, .5], [.5, .83]]) {
+        const offset = (Math.floor(y * bitmap.height) * bitmap.width + Math.floor(x * bitmap.width)) * 4;
+        const background = `rgb(${bitmap.data[offset]}, ${bitmap.data[offset + 1]}, ${bitmap.data[offset + 2]})`;
+        assert.ok(contrast(foreground, background) >= 3, `${theme}: Done must have 3:1 icon contrast against its rendered material`);
+      }
       const shortDay = page.getByRole('dialog').getByRole('button', { name: /^Upper A / }).first();
       const rowGeometry = await shortDay.evaluate(element => ({ width: element.getBoundingClientRect().width, parent: element.parentElement.clientWidth }));
       assert.ok(rowGeometry.width >= rowGeometry.parent - 2, 'Native day buttons must retain the original full-row hit area');
