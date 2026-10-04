@@ -86,6 +86,96 @@ test('day-only additions survive reopening without changing the saved routine or
   assert.ok(!app.workoutDay('upperA').exercises.some(x => x.id === 'hammer-curl'));
 });
 
+test('day-only Add creates a configured exercise through the shared form without changing the routine', () => {
+  const f = fixture(), { app, storage } = f;
+  const program = JSON.stringify(app.state.program), before = storage.get(app.LSKEY);
+  app.state.todayPickDay = 'upperA';
+  action(app.todayExerciseSheet(), 'addCreate custom exercise').props.onClick();
+  assert.equal(app.state.editor.scope, 'daily-create');
+  assert.equal(nodes(app.editorSheet()).find(n => n.props?.role === 'dialog').props['aria-label'], 'Create exercise for today');
+  const edit = (placeholder, value) => {
+    const input = nodes(app.editorSheet()).find(n => n.type === 'input' && n.props.placeholder === placeholder);
+    assert.ok(input, `The shared ${placeholder} field must be available`);
+    input.props.onInput({ target: { value } });
+  };
+  edit('Name', '  Cable rotation  '); edit('Primary', 'Obliques'); edit('Assist', 'Core');
+  const sets = nodes(app.editorSheet()).find(n => n.props?.['aria-label'] === 'Increase Sets');
+  sets.props.onClick();
+  const flag = nodes(app.editorSheet()).find(n => n.props?.role === 'switch' && n.props['aria-label'] === 'Timed (seconds)');
+  flag.props.onClick();
+  nodes(app.editorSheet()).find(n => n.type === 'textarea').props.onInput({ target: { value: 'Controlled rotation.' } });
+  assert.equal(storage.get(app.LSKEY), before, 'Editing a draft must not save a placeholder exercise');
+  const id = app.state.editor.exercise.id;
+  action(app.editorSheet(), 'Add for today').props.onClick();
+  const created = app.dailyExtras('upperA')[0];
+  assert.equal(created.id, id);
+  assert.equal(created.name, 'Cable rotation'); assert.equal(created.primary, 'Obliques');
+  assert.equal(created.sets, 4); assert.equal(created.timed, true); assert.equal(created.ref, 'Controlled rotation.');
+  assert.equal(JSON.stringify(app.state.program), program);
+  assert.equal(app.state.editor, null);
+  assert.equal(f.reload().app.workoutDay('upperA').exercises.at(-1).id, id);
+  app.startSession('upperA');
+  app.state.curEx = app.workoutDay('upperA').exercises.findIndex(ex => ex.id === id);
+  nodes(app.sessionView()).find(n => n.props?.['aria-label'] === 'Complete set 1').props.onClick();
+  assert.equal(app.state.logs[app.todayKey()].sets[id][0].done, true);
+  app.exportBackup();
+  assert.equal(f.context.backup.dailyExercises[app.todayKey()].upperA[0].id, id);
+  f.setDate('2026-10-05');
+  assert.ok(!app.workoutDay('upperA').exercises.some(ex => ex.id === id));
+  app.state.dayDetail = '2026-10-04';
+  assert.ok(text(app.dayDetailSheet()).includes('Cable rotation'), 'Historical metadata must survive the day change');
+});
+
+test('cancelling or submitting an empty day-only draft preserves workouts and the routine', () => {
+  const { app, storage } = fixture();
+  const before = storage.get(app.LSKEY), program = JSON.stringify(app.state.program);
+  app.state.todayPickDay = 'upperA';
+  action(app.todayExerciseSheet(), 'addCreate custom exercise').props.onClick();
+  action(app.editorSheet(), 'Add for today').props.onClick();
+  assert.equal(storage.get(app.LSKEY), before);
+  assert.equal(app.dailyExtras('upperA').length, 0);
+  nodes(app.editorSheet()).find(n => n.props?.['aria-label'] === 'Back').props.onClick();
+  assert.equal(app.state.editor, null);
+  assert.equal(app.state.todayPickDay, 'upperA');
+  assert.equal(JSON.stringify(app.state.program), program);
+  assert.equal(storage.get(app.LSKEY), before);
+});
+
+test('new day-only creation initializes an active session and rejects stale or duplicate submissions', () => {
+  const f = fixture(), { app } = f;
+  app.startSession('upperA');
+  const program = JSON.stringify(app.state.program);
+  const ex = app.newExercise('New accessory', 'Back', 'Biceps');
+  assert.equal(typeof app.createDailyExercise, 'function');
+  assert.equal(app.createDailyExercise('upperA', ex, app.todayKey()), true);
+  assert.equal(app.state.logs[app.todayKey()].sets[ex.id].length, ex.sets);
+  assert.equal(app.createDailyExercise('upperA', ex, app.todayKey()), false);
+  assert.equal(app.dailyExtras('upperA').length, 1);
+  const next = app.newExercise('Another accessory', 'Back', 'Biceps');
+  f.setDate('2026-10-05');
+  assert.equal(app.createDailyExercise('upperA', next, '2026-10-04'), false);
+  assert.equal(app.dailyExtras('upperA').length, 0);
+  assert.equal(JSON.stringify(app.state.program), program);
+});
+
+test('the shared routine editor still creates permanent exercises and saves their fields', () => {
+  const f = fixture(), { app, storage } = f;
+  app.state.editor = { view: 'addex', dayId: 'upperA' };
+  action(app.editorSheet(), 'addCreate custom exercise').props.onClick();
+  const id = app.state.editor.exId;
+  assert.ok(app.dayById('upperA').exercises.some(ex => ex.id === id));
+  const form = app.editorSheet();
+  nodes(form).find(n => n.type === 'input' && n.props.placeholder === 'Name').props.onInput({ target: { value: 'Permanent accessory' } });
+  nodes(form).find(n => n.type === 'textarea').props.onInput({ target: { value: 'Routine cue' } });
+  nodes(form).find(n => n.props?.['aria-label'] === 'Increase Sets').props.onClick();
+  const saved = JSON.parse(storage.get(app.LSKEY)).program.days.find(day => day.id === 'upperA').exercises.find(ex => ex.id === id);
+  assert.equal(saved.name, 'Permanent accessory');
+  assert.equal(saved.ref, 'Routine cue');
+  assert.equal(saved.sets, 4);
+  assert.equal(app.dailyExtras('upperA').length, 0);
+  assert.equal(f.reload().app.dayById('upperA').exercises.at(-1).id, id);
+});
+
 test('an added exercise uses existing weights, logs, progress and History metadata', () => {
   const { app } = fixture();
   const custom = app.newExercise('Tempo curl with pause', 'Biceps', 'Forearms');

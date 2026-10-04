@@ -2962,8 +2962,10 @@ button { -webkit-tap-highlight-color: transparent; }
 .chart-grid svg { display: block; width: 100%; height: auto; max-width: 100%; overflow: visible; }
 .chart-grid text { fill: var(--secondary); font-family: inherit; }
 .editor-row { min-width: 0; padding: 16px; border-radius: 22px; margin-bottom: 10px; }
-.editor-row > div:first-child { flex-wrap: wrap; align-items: flex-start !important; gap: 8px !important; }
-.editor-row > div:first-child > :first-child { flex-basis: 9rem; min-width: 0; }
+.editor-row-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.dexter-app .editor-exercise-main { display: block; width: 100%; min-width: 0; padding: 0; background: transparent; text-align: left; }
+.editor-exercise-main .row-title { font-weight: 600; line-height: 1.35; overflow-wrap: break-word; }
+.editor-exercise-main .row-subtitle { line-height: 1.4; overflow-wrap: break-word; }
 .editor-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 100%; flex-shrink: 1 !important; }
 .editor-actions > button { min-width: 44px; width: 44px !important; min-height: 44px; height: auto !important; padding: 10px !important; border-radius: 14px !important; }
 .editor-actions > button:disabled { opacity: .42; }
@@ -3519,6 +3521,18 @@ class Component extends DCLogic {
 
   addDailyExercise(dayId,exId){ var ex=this.availableDailyExercises(dayId).filter(function(x){return x.id===exId;})[0]; if(!ex)return false; var S=this.state,date=this.todayKey(); S.dailyExercises=S.dailyExercises||{}; var days=S.dailyExercises[date]||(S.dailyExercises[date]={}); var extras=days[dayId]||(days[dayId]=[]); extras.push(this.deepCopy(ex)); if(S.inSession&&S.sessionDay===dayId)this.ensureSessionLog(dayId); this.commit(); return true; }
 
+  beginDailyExerciseCreation(dayId){if(!this.dayById(dayId))return;var ex=this.newExercise('','Custom','—');this.go({todayPickDay:null,editor:{view:'ex',scope:'daily-create',dayId:dayId,exId:ex.id,date:this.todayKey(),exercise:ex}});}
+
+  createDailyExercise(dayId,exercise,date){
+    if(date&&date!==this.todayKey()){this.toast('The day changed. Create this exercise again for today.','err');return false;}
+    if(!this.dayById(dayId)||!exercise)return false;
+    var name=(exercise.name||'').trim();if(!name){this.toast('Enter an exercise name','err');return false;}
+    var ex=this.deepCopy(exercise);ex.name=name;ex.id=ex.id||this.genId('ex');
+    if(this.workoutDay(dayId).exercises.some(function(item){return item.id===ex.id;}))return false;
+    var S=this.state,key=this.todayKey();S.dailyExercises=S.dailyExercises||{};var days=S.dailyExercises[key]||(S.dailyExercises[key]={});var extras=days[dayId]||(days[dayId]=[]);extras.push(ex);
+    if(S.inSession&&S.sessionDay===dayId)this.ensureSessionLog(dayId);this.commit();return true;
+  }
+
   shortName(n){ var p=n.split(' '); if(p.length>=2 && p[p.length-1].length<=2) return p[0].slice(0,3)+' '+p[p.length-1]; return p[0].length>5?p[0].slice(0,4):p[0]; }
 
   friendlyDate(key){ var today=this.todayKey(); if(key===today) return 'Today'; var pr=key.split('-'); var d=new Date(+pr[0],+pr[1]-1,+pr[2]); var y=new Date(); y.setDate(y.getDate()-1); var yk=y.getFullYear()+'-'+String(y.getMonth()+1).padStart(2,'0')+'-'+String(y.getDate()).padStart(2,'0'); if(key===yk) return 'Yesterday'; var dows=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],mons=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return dows[d.getDay()]+' '+d.getDate()+' '+mons[d.getMonth()]; }
@@ -3759,12 +3773,13 @@ class Component extends DCLogic {
   newExercise(name,primary,assist){ return {id:this.genId('ex'),name:name,primary:primary,assist:assist||'—',sets:3,repLow:8,repHigh:12,rir:'1–2',disc:false,stretch:false,timed:false,ref:'Controlled tempo, full range, stop at the prescribed RIR.'}; }
 
   editorSheet(){ var e=this.E,t=this.T(),S=this.state,self=this,acc=t.acc; var ed=S.editor;
-    function close(){ self.go({editor:null}); }
+    var dailyCreate=ed.scope==='daily-create';
+    function close(){ self.go(dailyCreate?{editor:null,todayPickDay:ed.dayId}:{editor:null}); }
     function goV(view,extra){ self.go({editor:Object.assign({view:view},extra||{})}); }
-    function commit(){ self.commit(); }
+    function commit(){ if(dailyCreate)self.forceUpdate();else self.commit(); }
     function header(title,sub,backTo){ return e('div',{className:'sheet-header',style:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'12px',flexShrink:0}},
       e('div',{style:{minWidth:0}}, e('div',{style:{fontFamily:'inherit',overflowWrap:'anywhere',fontSize:'1.375rem',fontWeight:650,color:t.onSurf,letterSpacing:'-0.02em',whiteSpace:'normal',overflow:'hidden',textOverflow:'ellipsis'}}, title), sub?e('div',{style:{overflowWrap:'anywhere',fontSize:'0.8125rem',color:t.faint,marginTop:'2px'}}, sub):null),
-      self.iconBtn(backTo?'arrow_back':'check', function(){ if(backTo) goV(backTo.view,backTo.extra); else close(); }, {icon:20,color:backTo?t.muted:acc.onFill,bg:backTo?t.surf2:(acc.fill[0])})); }
+      self.iconBtn(backTo?'arrow_back':'check', function(){ if(backTo&&backTo.dailyPicker)close();else if(backTo) goV(backTo.view,backTo.extra); else close(); }, {icon:20,color:backTo?t.muted:acc.onFill,bg:backTo?t.surf2:(acc.fill[0])})); }
     function fLabel(txt,mt){ return self.label(txt,{overflowWrap:'anywhere',fontSize:'0.8125rem',marginBottom:'8px',marginTop:mt||'0'}); }
     function inp(val,ph,onInput,opts){ opts=opts||{}; return e('input',{defaultValue:val,placeholder:ph,onInput:onInput,style:Object.assign({width:'100%',padding:'14px 15px',borderRadius:'15px',overflowWrap:'anywhere',fontSize:'1.0625rem',color:t.onSurf,background:t.inputBg,border:'none',fontFamily:'inherit'},opts.style||{})}); }
     function numField(name,val,min,max,onChange){return e('div',null,fLabel(name),self.stepper(val,1,'',function(value){onChange(Math.min(max,Math.max(min,value)));},name));}
@@ -3783,8 +3798,8 @@ class Component extends DCLogic {
       hdr=header(day.name,(day.tag||'')+' · '+day.exercises.length+' exercises',{view:'program'});
       var rows=day.exercises.map(function(ex,i){ function mini(icon,bg,col,onClick,disabled){return self.iconBtn(icon,onClick,{color:col,disabled:disabled,label:self.iconLabel(icon)+' · '+ex.name});}
         return e('div',{key:ex.id,className:'editor-row',style:{padding:'12px 13px',marginBottom:'9px',borderRadius:'18px',background:t.surf2,border:'none'}},
-          e('div',{style:{display:'flex',alignItems:'center',gap:'7px'}},
-            e('div',{className:'tap',onClick:function(){ goV('ex',{dayId:day.id,exId:ex.id}); },style:{flex:1,minWidth:0}}, e('div',{style:{overflowWrap:'anywhere',fontSize:'1.0625rem',fontWeight:600,color:t.onSurf,whiteSpace:'normal',overflow:'hidden',textOverflow:'ellipsis'}}, ex.name), e('div',{style:{overflowWrap:'anywhere',fontSize:'0.8125rem',color:t.faint,marginTop:'2px'}}, ex.primary+' · '+ex.sets+'×'+ex.repLow+'–'+ex.repHigh)),
+          e('div',{className:'editor-row-layout'},
+            e('button',{className:'editor-exercise-main tap',onClick:function(){ goV('ex',{dayId:day.id,exId:ex.id}); }},e('span',{className:'row-title'},ex.name),e('span',{className:'row-subtitle'},ex.primary+' · '+ex.sets+'×'+ex.repLow+'–'+ex.repHigh)),
             e('div',{className:'editor-actions',style:{display:'flex',gap:'5px',flexShrink:1}},
               mini('keyboard_arrow_up',t.surf,t.muted,function(){ self.swap(day.exercises,i,i-1); commit(); },i===0),
               mini('keyboard_arrow_down',t.surf,t.muted,function(){ self.swap(day.exercises,i,i+1); commit(); },i===day.exercises.length-1),
@@ -3794,16 +3809,18 @@ class Component extends DCLogic {
       });
       var delBtn = S.program.days.length>1 ? e('button',{className:'tap',onClick:function(){ S.program.days=S.program.days.filter(function(x){return x.id!==day.id;}); S.program.weekPlan=S.program.weekPlan.map(function(s){return s===day.id?'rest':s;}); self.save(); goV('program'); },style:{width:'100%',marginTop:'14px',padding:'14px 0',borderRadius:'16px',overflowWrap:'anywhere',fontSize:'1.0625rem',fontWeight:600,color:t.dangerT,background:t.dangerC,border:'none',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}, self.icon('delete',17,{color:t.dangerT}), 'Delete this day') : null;
       content=[ e('div',{style:{marginBottom:'14px'}}, inp(day.name,'Day name',function(ev){ day.name=ev.target.value; self.save(); }), inp(day.tag||'','Tag (e.g. Quad-biased)',function(ev){ day.tag=ev.target.value; self.save(); },{style:{marginTop:'8px'}})), rows, dashed('Add exercise',function(){ goV('addex',{dayId:day.id}); }), delBtn ];
-    } else if(ed.view==='ex'){ var d2=this.dayById(ed.dayId); var ex=d2&&d2.exercises.filter(function(x){return x.id===ed.exId;})[0]; if(!ex){ goV('day',{dayId:ed.dayId}); return e('div'); }
-      hdr=header('Edit exercise',ex.primary,{view:'day',extra:{dayId:ed.dayId}});
+    } else if(ed.view==='ex'){ var d2=this.dayById(ed.dayId); var ex=dailyCreate?ed.exercise:(d2&&d2.exercises.filter(function(x){return x.id===ed.exId;})[0]); if(!ex){ if(dailyCreate)close();else goV('day',{dayId:ed.dayId}); return e('div'); }
+      function saveExercise(){if(!dailyCreate)self.save();}
+      hdr=header(dailyCreate?'Create exercise':'Edit exercise',dailyCreate?'For today only':ex.primary,dailyCreate?{dailyPicker:true}:{view:'day',extra:{dayId:ed.dayId}});
       var rirOpts=['0–1','1–2','2–3','3–4','—'];
       var rirRow=self.segmented(rirOpts.map(function(o){return {id:o,name:o==='—'?'core':o};}),ex.rir,function(o){ex.rir=o;commit();},'rir','RIR');
-      content=[ fLabel('Name'), inp(ex.name,'Name',function(ev){ ex.name=ev.target.value; self.save(); }),
-        e('div',{style:{display:'flex',gap:'8px',marginTop:'10px'}}, e('div',{style:{flex:1,minWidth:0}}, fLabel('Primary'), inp(ex.primary,'Primary',function(ev){ ex.primary=ev.target.value; self.save(); })), e('div',{style:{flex:1,minWidth:0}}, fLabel('Assist'), inp(ex.assist,'Assist',function(ev){ ex.assist=ev.target.value; self.save(); }))),
+      content=[ fLabel('Name'), inp(ex.name,'Name',function(ev){ ex.name=ev.target.value; saveExercise(); }),
+        e('div',{style:{display:'flex',gap:'8px',marginTop:'10px'}}, e('div',{style:{flex:1,minWidth:0}}, fLabel('Primary'), inp(ex.primary,'Primary',function(ev){ ex.primary=ev.target.value; saveExercise(); })), e('div',{style:{flex:1,minWidth:0}}, fLabel('Assist'), inp(ex.assist,'Assist',function(ev){ ex.assist=ev.target.value; saveExercise(); }))),
         e('div',{className:'editor-number-grid'}, numField('Sets',ex.sets,1,10,function(v){ ex.sets=v; commit(); }), numField(ex.timed?'Sec low':'Rep low',ex.repLow,1,99,function(v){ ex.repLow=v; commit(); }), numField(ex.timed?'Sec high':'Rep high',ex.repHigh,1,99,function(v){ ex.repHigh=v; commit(); })),
         fLabel('RIR','16px'), rirRow,
         fLabel('Flags','16px'), flagToggle('Disc-safety note','Shows brace / neutral-spine / stop-on-symptoms guidance',ex.disc,function(v){ ex.disc=v; commit(); }), flagToggle('Long-length emphasis','Marks the lift as a stretch-position movement',ex.stretch,function(v){ ex.stretch=v; commit(); }), flagToggle('Timed (seconds)','Logs seconds instead of reps (planks etc.)',ex.timed,function(v){ ex.timed=v; commit(); }),
-        fLabel('Cue / reference','16px'), e('textarea',{defaultValue:ex.ref,onInput:function(ev){ ex.ref=ev.target.value; self.save(); },style:{width:'100%',minHeight:'84px',resize:'vertical',padding:'14px',borderRadius:'15px',overflowWrap:'anywhere',fontSize:'0.8125rem',lineHeight:1.45,color:t.onSurf,background:t.inputBg,border:'none',fontFamily:'inherit'}}) ];
+        fLabel('Cue / reference','16px'), e('textarea',{defaultValue:ex.ref,onInput:function(ev){ ex.ref=ev.target.value; saveExercise(); },style:{width:'100%',minHeight:'84px',resize:'vertical',padding:'14px',borderRadius:'15px',overflowWrap:'anywhere',fontSize:'0.8125rem',lineHeight:1.45,color:t.onSurf,background:t.inputBg,border:'none',fontFamily:'inherit'}}) ];
+      if(dailyCreate)content.push(e('button',{className:'primary-button tap',style:{width:'100%',marginTop:'20px'},onClick:function(){if(self.createDailyExercise(ed.dayId,ex,ed.date)){self.go({editor:null,todayPickDay:null});self.toast(ex.name.trim()+' added for today','ok');}}},'Add for today'));
     } else if(ed.view==='addex'){ var dayA=this.dayById(ed.dayId); hdr=header('Add exercise','Pick from library or create custom',{view:'day',extra:{dayId:ed.dayId}});
       content=[ dashed('Create custom exercise',function(){ var nx=self.newExercise('New Exercise','Custom','—'); dayA.exercises.push(nx); self.save(); goV('ex',{dayId:dayA.id,exId:nx.id}); }), self.label('Library',{margin:'16px 0 11px'}),
         this.library().map(function(l){ return e('div',{key:l.name,className:'tap',onClick:function(){ var nx=self.newExercise(l.name,l.primary,'Accessory'); dayA.exercises.push(nx); self.save(); goV('day',{dayId:dayA.id}); },style:{display:'flex',alignItems:'center',gap:'12px',padding:'13px 14px',marginBottom:'8px',borderRadius:'16px',background:t.surf2,border:'none'}},
@@ -3823,7 +3840,7 @@ class Component extends DCLogic {
         e('button',{className:'tap',onClick:function(){ var nm=(ed.name||'').trim()||'New Day'; var nd={id:self.genId('day'),name:nm,tag:(ed.tag||'').trim(),exercises:[]}; S.program.days.push(nd); self.save(); goV('day',{dayId:nd.id}); },style:{width:'100%',marginTop:'20px',padding:'16px 0',borderRadius:'999px',border:'none',background:acc.fill[0],color:acc.onFill,overflowWrap:'anywhere',fontSize:'1.0625rem',fontWeight:600}}, 'Create day') ];
     }
     var inner=e('div',{style:{display:'flex',flexDirection:'column',minHeight:0}}, hdr, e('div',{className:'noscroll',style:{overflowY:'visible',marginTop:'14px',maxHeight:'none'}}, content));
-    return this.bottomSheet('editor',inner,close,{tint:t.surf,maxH:'92vh',z:79});
+    return this.bottomSheet('editor',inner,close,{tint:t.surf,maxH:'92vh',z:79,title:dailyCreate?'Create exercise for today':undefined});
   }
 
   importSheet(){ var e=this.E,t=this.T(),self=this,acc=t.acc; function close(){ self.go({importOpen:false}); }
@@ -3850,8 +3867,9 @@ class Component extends DCLogic {
     var inner=e('div',{className:'noscroll',style:{overflowY:'visible'}},
       e('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px',marginBottom:'12px'}},e('div',{style:{fontFamily:'inherit',overflowWrap:'anywhere',fontSize:'1.375rem',fontWeight:650,color:t.onSurf}},'Add exercise'),this.iconBtn('close',close,{icon:20})),
       this.hint('Added for today only. Your saved routine stays the same.'),
+      e('button',{className:'add-row tap',onClick:function(){self.beginDailyExerciseCreation(dayId);}},this.icon('add',20),'Create custom exercise'),
       list.length?e('div',{className:'grouped-list choice-list'},list.map(function(ex){return e('button',{key:ex.id,className:'content-row tap',onClick:function(){if(self.addDailyExercise(dayId,ex.id)){close();self.toast(ex.name+' added for today','ok');}}},
-        e('span',{className:'row-copy'},e('span',{className:'row-title'},ex.name),e('span',{className:'row-subtitle'},ex.primary+' · '+ex.sets+' sets')),self.icon('add',20));})):this.hint('No other saved exercises available. Add exercises to your program to make them available here.')
+        e('span',{className:'row-copy'},e('span',{className:'row-title'},ex.name),e('span',{className:'row-subtitle'},ex.primary+' · '+ex.sets+' sets')),self.icon('add',20));})):this.hint('No other saved exercises available. Create a custom exercise for today.')
     ); return this.bottomSheet('today-exercises',inner,close,{maxH:'82vh'});
   }
 

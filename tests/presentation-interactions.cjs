@@ -133,6 +133,29 @@ async function main() {
     const closeBox = await close.boundingBox();
     assert.ok(closeBox.x >= 0 && closeBox.x + closeBox.width <= 320 && closeBox.width >= 44, 'Long reference names at 200% must retain a visible full-size Close control');
     await close.click(); await settled(page);
+    // Exercise titles get a full row; the five actions must never consume their width.
+    for (const width of [320, 390]) for (const fontSize of [16, 32]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.addStyleTag({ content: `html { font-size:${fontSize}px !important; }` });
+      await appCall(page, app => { app.go({ editor: { view: 'day', dayId: app.state.program.days[0].id } }); });
+      await settled(page);
+      const rows = await page.locator('.editor-row').evaluateAll(rows => rows.map(row => {
+        const main = row.querySelector('.editor-exercise-main'), actions = row.querySelector('.editor-actions');
+        const container = row.getBoundingClientRect(), name = main.getBoundingClientRect(), toolbar = actions.getBoundingClientRect();
+        return { container: container.width, name: name.width, below: toolbar.top >= name.bottom, background: getComputedStyle(main).backgroundColor,
+          escaped: name.right > container.right + 1 || toolbar.right > container.right + 1,
+          smallActions: [...actions.querySelectorAll('button')].some(button => { const box = button.getBoundingClientRect(); return box.width < 44 || box.height < 44; }) };
+      }));
+      assert.ok(rows.length > 0);
+      for (const row of rows) {
+        assert.ok(row.name >= row.container - 30, `${width}/${fontSize}: exercise names must keep the full content width`);
+        assert.equal(row.below, true, 'Actions belong below the name');
+        assert.equal(row.background, 'rgba(0, 0, 0, 0)', 'The name must not acquire a browser button-face rectangle');
+        assert.equal(row.escaped, false); assert.equal(row.smallActions, false);
+      }
+    }
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.addStyleTag({ content: 'html { font-size:32px !important; }' });
     await appCall(page, app => { app.state.program.days[0].name = 'ExtremelyLongUnbrokenCustomDayName'.repeat(5); app.state.program.weekPlan = Array(7).fill(app.state.program.days[0].id); app.go({ editor: { view: 'week' } }); });
     const escapedControls = await page.getByRole('dialog').locator('button').evaluateAll(buttons => buttons.filter(button => { const r = button.getBoundingClientRect(); return r.x < -1 || r.right > innerWidth + 1; }).map(button => button.textContent));
     assert.deepEqual(escapedControls, [], 'Weekly editor controls must remain within the sheet at 200%');
