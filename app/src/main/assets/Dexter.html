@@ -2410,7 +2410,7 @@ class Component extends DCLogic {
     {name:'Shrug (DB)',primary:'Traps'},{name:'Wrist Curl',primary:'Forearms'},{name:'Glute Kickback (cable)',primary:'Glutes'},{name:'Standing Calf Raise',primary:'Gastrocnemius'},
   ]; }
 
-  defaultStore(){ return { program:this.defaultProgram(), logs:{}, bodyweight:[], cardio:[], phase:{training:'STANDARD',nutrition:'CUT',deloadWeeks:6}, theme:'dark', accentKey:'violet' }; }
+  defaultStore(){ return { program:this.defaultProgram(), logs:{}, dailyExercises:{}, progressResets:{}, customCardioTypes:[], bodyweight:[], cardio:[], phase:{training:'STANDARD',nutrition:'CUT',deloadWeeks:6}, theme:'dark', accentKey:'violet' }; }
   loadStore(){
     try { var raw=localStorage.getItem(this.LSKEY); var base=this.defaultStore(); if(!raw) return base; var p=JSON.parse(raw); for(var k in p) base[k]=p[k];
       if(!base.program||!base.program.days||!base.program.days.length) base.program=this.defaultProgram();
@@ -2418,11 +2418,11 @@ class Component extends DCLogic {
       return base;
     } catch(e){ return this.defaultStore(); }
   }
-  save(){ try { var S=this.state; localStorage.setItem(this.LSKEY, JSON.stringify({ program:S.program, logs:S.logs, bodyweight:S.bodyweight, cardio:S.cardio, phase:S.phase, theme:S.theme, accentKey:S.accentKey })); } catch(e){} }
+  save(){ try { var S=this.state; localStorage.setItem(this.LSKEY, JSON.stringify({ program:S.program, logs:S.logs, dailyExercises:S.dailyExercises, progressResets:S.progressResets, customCardioTypes:S.customCardioTypes, bodyweight:S.bodyweight, cardio:S.cardio, phase:S.phase, theme:S.theme, accentKey:S.accentKey })); } catch(e){} }
   _boot(){ var d=this.loadStore(); return {
-    program:d.program, logs:d.logs||{}, bodyweight:d.bodyweight||[], cardio:d.cardio||[], phase:d.phase, theme:d.theme||'dark', accentKey:d.accentKey||'violet',
+    program:d.program, logs:d.logs||{}, dailyExercises:d.dailyExercises||{}, progressResets:d.progressResets||{}, customCardioTypes:d.customCardioTypes||[], bodyweight:d.bodyweight||[], cardio:d.cardio||[], phase:d.phase, theme:d.theme||'dark', accentKey:d.accentKey||'violet',
     tab:'today', inSession:false, sessionDay:null, curEx:0, modal:null, editor:null, pickDay:false,
-    progPickOpen:false, progPick:null, importOpen:false, settings:false, dayDetail:null, toast:null,
+    progPickOpen:false, progPick:null, progSelectMode:false, progSelected:{}, todayPickDay:null, cardioCreateOpen:false, cardioName:'', importOpen:false, settings:false, dayDetail:null, toast:null,
     cardioPick:'treadmill', progFired:{}, confirmReset:false, navTick:0,
   }; }
   componentDidMount(){
@@ -2462,26 +2462,36 @@ class Component extends DCLogic {
   todayDayId(){ return this.state.program.weekPlan[this.todayIdx()]; }
   weekdayName(){ return ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][this.todayIdx()]; }
   dayById(id){ var ds=this.state.program.days; for(var i=0;i<ds.length;i++) if(ds[i].id===id) return ds[i]; return null; }
+  activeExercises(){ var seen={},list=[]; this.state.program.days.forEach(function(d){ d.exercises.forEach(function(ex){ if(!seen[ex.id]){ seen[ex.id]=true; list.push(ex); } }); }); return list; }
+  dailyExtras(dayId,date){ var days=(this.state.dailyExercises||{})[date||this.todayKey()]||{}; return days[dayId]||[]; }
+  workoutDay(dayId,date){ var day=this.dayById(dayId); if(!day)return null; var seen={},list=[]; day.exercises.concat(this.dailyExtras(dayId,date)).forEach(function(ex){ if(!seen[ex.id]){ seen[ex.id]=true; list.push(ex); } }); return Object.assign({},day,{exercises:list}); }
+  exerciseMeta(exId,date){ var saved=this.activeExercises().filter(function(ex){return ex.id===exId;})[0]||null,daily=this.state.dailyExercises||{}; if(!date&&saved)return saved; var dates=date?[date]:Object.keys(daily).sort().reverse(); for(var i=0;i<dates.length;i++){var found=null,days=daily[dates[i]]||{};Object.keys(days).forEach(function(id){(days[id]||[]).forEach(function(ex){if(ex.id===exId)found=ex;});});if(found)return found;} return saved; }
+  availableDailyExercises(dayId){ var day=this.workoutDay(dayId); if(!day)return []; var present={}; day.exercises.forEach(function(ex){present[ex.id]=true;}); return this.activeExercises().filter(function(ex){return !present[ex.id];}); }
+  addDailyExercise(dayId,exId){ var ex=this.availableDailyExercises(dayId).filter(function(x){return x.id===exId;})[0]; if(!ex)return false; var S=this.state,date=this.todayKey(); S.dailyExercises=S.dailyExercises||{}; var days=S.dailyExercises[date]||(S.dailyExercises[date]={}); var extras=days[dayId]||(days[dayId]=[]); extras.push(this.deepCopy(ex)); if(S.inSession&&S.sessionDay===dayId)this.ensureSessionLog(dayId); this.commit(); return true; }
   shortName(n){ var p=n.split(' '); if(p.length>=2 && p[p.length-1].length<=2) return p[0].slice(0,3)+' '+p[p.length-1]; return p[0].length>5?p[0].slice(0,4):p[0]; }
   friendlyDate(key){ var today=this.todayKey(); if(key===today) return 'Today'; var pr=key.split('-'); var d=new Date(+pr[0],+pr[1]-1,+pr[2]); var y=new Date(); y.setDate(y.getDate()-1); var yk=y.getFullYear()+'-'+String(y.getMonth()+1).padStart(2,'0')+'-'+String(y.getDate()).padStart(2,'0'); if(key===yk) return 'Yesterday'; var dows=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],mons=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return dows[d.getDay()]+' '+d.getDate()+' '+mons[d.getMonth()]; }
   prettyId(id){ return id.replace(/-[a-z0-9]+$/i,'').replace(/-/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();}); }
   setCounts(r){ return r && (r.done || (+r.r>0)); }
   lastRowsFor(exId){ var logs=this.state.logs||{}, today=this.todayKey(); var dates=Object.keys(logs).filter(function(d){return d!==today;}).sort().reverse(); for(var i=0;i<dates.length;i++){ var en=logs[dates[i]]; var rows=en&&en.sets&&en.sets[exId]; if(rows&&rows.length&&rows.some(function(r){return r.done;})) return rows; } return null; }
   lastW(exId){ var rows=this.lastRowsFor(exId); if(!rows) return 0; var w=0; rows.forEach(function(r){ if(r.done&&+r.w>w) w=+r.w; }); return w; }
-  ensureSessionLog(dayId){ var S=this.state, today=this.todayKey(); S.logs=S.logs||{}; var en=S.logs[today]; if(!en||en.day!==dayId){ en={day:dayId,sets:{}}; S.logs[today]=en; } var day=this.dayById(dayId); var self=this;
-    if(day) day.exercises.forEach(function(ex){ var rows=en.sets[ex.id]||[]; var prev=self.lastRowsFor(ex.id); while(rows.length<ex.sets){ var gi=rows.length; var gw=prev?+((prev[gi]||prev[prev.length-1]).w):0; rows.push({w:gw,r:'',done:false}); } if(rows.length>ex.sets) rows=rows.slice(0,ex.sets); en.sets[ex.id]=rows; });
+  ensureSessionLog(dayId){ var S=this.state, today=this.todayKey(); S.logs=S.logs||{}; var en=S.logs[today]; if(!en||en.day!==dayId){ en={day:dayId,sets:{}}; S.logs[today]=en; } var day=this.workoutDay(dayId); var self=this;
+    if(day) day.exercises.forEach(function(ex){ var rows=en.sets[ex.id]||[]; var prev=self.lastRowsFor(ex.id); while(rows.length<ex.sets){ var gi=rows.length; var gw=prev?+((prev[gi]||prev[prev.length-1]).w):0; rows.push({w:gw,r:'',done:false,progressVersion:(S.progressResets||{})[ex.id]||0}); } if(rows.length>ex.sets) rows=rows.slice(0,ex.sets); en.sets[ex.id]=rows; });
     this.save(); return en; }
-  daySummary(date){ var en=this.state.logs&&this.state.logs[date]; if(!en) return null; var day=this.dayById(en.day); var dayName=day?day.name:'Workout'; var total=day?day.exercises.length:Object.keys(en.sets||{}).length; var done=0; var self=this; Object.keys(en.sets||{}).forEach(function(id){ if((en.sets[id]||[]).some(function(r){return self.setCounts(r);})) done++; }); return {date:date,day:en.day,dayName:dayName,doneCount:done,totalPlanned:total}; }
+  daySummary(date){ var en=this.state.logs&&this.state.logs[date]; if(!en) return null; var day=this.workoutDay(en.day,date); var dayName=day?day.name:'Workout'; var total=day?day.exercises.length:Object.keys(en.sets||{}).length; var done=0; var self=this; Object.keys(en.sets||{}).forEach(function(id){ if((en.sets[id]||[]).some(function(r){return self.setCounts(r);})) done++; }); return {date:date,day:en.day,dayName:dayName,doneCount:done,totalPlanned:total}; }
   loggedDates(){ var logs=this.state.logs||{}, self=this; return Object.keys(logs).filter(function(d){ var e=logs[d]; return e&&e.sets&&Object.keys(e.sets).some(function(id){return (e.sets[id]||[]).some(function(r){return self.setCounts(r);});}); }).sort().reverse(); }
-  lastTwoFor(exId){ var dates=this.loggedDates(), out=[], self=this; for(var i=0;i<dates.length&&out.length<2;i++){ var rows=(this.state.logs[dates[i]].sets||{})[exId]; if(rows&&rows.some(function(r){return self.setCounts(r);})) out.push({date:dates[i],rows:rows.filter(function(r){return self.setCounts(r);})}); } return out; }
-  allLoggedExercises(){ var seen={},list=[],nameById={},self=this; this.state.program.days.forEach(function(d){d.exercises.forEach(function(e){nameById[e.id]=e.name;});}); this.loggedDates().forEach(function(date){ var sets=self.state.logs[date].sets||{}; Object.keys(sets).forEach(function(exId){ if(seen[exId])return; if(!(sets[exId]||[]).some(function(r){return self.setCounts(r);}))return; seen[exId]=true; list.push({id:exId,name:nameById[exId]||self.prettyId(exId)}); }); }); return list; }
+  // Reset only the Progress view. Legacy rows belong to version 0; History keeps all versions.
+  progressRowsFor(exId,date){ var en=(this.state.logs||{})[date],rows=en&&en.sets&&en.sets[exId]||[],version=(this.state.progressResets||{})[exId]||0,self=this; return rows.filter(function(r){return self.setCounts(r)&&(r.progressVersion||0)===version;}); }
+  resetExerciseProgress(ids){ var S=this.state,seen={}; S.progressResets=S.progressResets||{}; ids.forEach(function(id){if(!seen[id]){seen[id]=true;S.progressResets[id]=(S.progressResets[id]||0)+1;}}); S.progPick=null; this.commit(); }
+  lastTwoFor(exId){ var dates=this.loggedDates(), out=[]; for(var i=0;i<dates.length&&out.length<2;i++){ var rows=this.progressRowsFor(exId,dates[i]); if(rows.length)out.push({date:dates[i],rows:rows}); } return out; }
+  allLoggedExercises(){ var seen={},list=[],self=this; this.loggedDates().forEach(function(date){ var sets=self.state.logs[date].sets||{}; Object.keys(sets).forEach(function(exId){ if(seen[exId]||!self.progressRowsFor(exId,date).length)return; seen[exId]=true; var meta=self.exerciseMeta(exId,date); list.push({id:exId,name:meta?meta.name:self.prettyId(exId)}); }); }); return list; }
   workoutsInLast(days){ var c=new Date(); c.setDate(c.getDate()-days+1); var ck=c.getFullYear()+'-'+String(c.getMonth()+1).padStart(2,'0')+'-'+String(c.getDate()).padStart(2,'0'); return this.loggedDates().filter(function(d){return d>=ck;}).length; }
-  seriesFor(exId){ var out=[],logs=this.state.logs||{}; Object.keys(logs).sort().forEach(function(d){ var en=logs[d]; var rows=en&&en.sets&&en.sets[exId]; if(!rows)return; var best=0; rows.forEach(function(r){ var w=+r.w,reps=+r.r; var counts=r.done||(reps>0); if(counts&&w>0&&reps>0){ var e=w*(1+reps/30); if(e>best)best=e; } }); if(best>0) out.push({date:d,w:Math.round(best*10)/10}); }); return out; }
-  cardioTypes(){ return [{id:'treadmill',name:'Treadmill'},{id:'elliptical',name:'Elliptical'},{id:'cycling',name:'Cycling'}]; }
+  seriesFor(exId){ var out=[],self=this; Object.keys(this.state.logs||{}).sort().forEach(function(d){ var best=0; self.progressRowsFor(exId,d).forEach(function(r){ var w=+r.w,reps=+r.r; if(w>0&&reps>0){ var e=w*(1+reps/30); if(e>best)best=e; } }); if(best>0) out.push({date:d,w:Math.round(best*10)/10}); }); return out; }
+  cardioTypes(){ return [{id:'treadmill',name:'Treadmill'},{id:'elliptical',name:'Elliptical'},{id:'cycling',name:'Cycling'}].concat(this.state.customCardioTypes||[]); }
+  createCardioType(name){ var nm=(name||'').trim().replace(/\s+/g,' '); if(!nm){this.toast('Enter a cardio name','err');return null;} if(this.cardioTypes().some(function(x){return x.name.toLowerCase()===nm.toLowerCase();})){this.toast('That cardio exercise already exists','err');return null;} var type={id:this.genId('cardio'),name:nm}; this.state.customCardioTypes.push(type); this.save(); return type; }
   addCardio(type,min){ var S=this.state; S.cardio=S.cardio||[]; S.cardio.push({date:this.todayKey(),type:type,min:min,ts:Date.now()}); this.save(); }
   deleteCardio(ts){ this.state.cardio=(this.state.cardio||[]).filter(function(c){return c.ts!==ts;}); this.save(); }
   cardioPerDay(days){ var byDate={}; (this.state.cardio||[]).forEach(function(c){byDate[c.date]=(byDate[c.date]||0)+(+c.min||0);}); var out=[]; for(var i=days-1;i>=0;i--){ var d=new Date(); d.setDate(d.getDate()-i); var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); out.push({date:key,min:byDate[key]||0}); } return out; }
-  cardioTotalsLast(days){ var c=new Date(); c.setDate(c.getDate()-days+1); var ck=c.getFullYear()+'-'+String(c.getMonth()+1).padStart(2,'0')+'-'+String(c.getDate()).padStart(2,'0'); var total=0,byType={treadmill:0,elliptical:0,cycling:0}; (this.state.cardio||[]).forEach(function(cc){ if(cc.date>=ck){ total+=(+cc.min||0); if(byType[cc.type]!=null) byType[cc.type]+=(+cc.min||0); } }); return {total:total,byType:byType}; }
+  cardioTotalsLast(days){ var c=new Date(); c.setDate(c.getDate()-days+1); var ck=c.getFullYear()+'-'+String(c.getMonth()+1).padStart(2,'0')+'-'+String(c.getDate()).padStart(2,'0'); var total=0,byType={}; this.cardioTypes().forEach(function(type){byType[type.id]=0;}); (this.state.cardio||[]).forEach(function(cc){ if(cc.date>=ck){ total+=(+cc.min||0); if(byType[cc.type]!=null) byType[cc.type]+=(+cc.min||0); } }); return {total:total,byType:byType}; }
   cardioHistory(){ return (this.state.cardio||[]).slice().sort(function(a,b){return (b.ts||0)-(a.ts||0);}); }
 
   startSession(dayId){ this.ensureSessionLog(dayId); this.go({sessionDay:dayId,curEx:0,inSession:true,progFired:{},pickDay:false}); }
@@ -2502,6 +2512,8 @@ class Component extends DCLogic {
     else { children.push(this.screenFor(S.tab)); children.push(this.navBar()); }
     if(S.pickDay) children.push(this.pickDaySheet());
     if(S.progPickOpen) children.push(this.exPickerSheet());
+    if(S.todayPickDay) children.push(this.todayExerciseSheet());
+    if(S.cardioCreateOpen) children.push(this.cardioCreateSheet());
     if(S.modal) children.push(this.modalView());
     if(S.dayDetail) children.push(this.dayDetailSheet());
     if(S.editor) children.push(this.editorSheet());
@@ -2556,7 +2568,7 @@ class Component extends DCLogic {
 
   // ============================================================ TODAY
   screenToday(){ var e=this.E, t=this.T(), S=this.state; var self=this;
-    var dayId=this.todayDayId(); var day=dayId==='rest'?null:this.dayById(dayId); var isRest=!day; var acc=t.acc;
+    var dayId=this.todayDayId(); var day=dayId==='rest'?null:this.workoutDay(dayId); var isRest=!day; var acc=t.acc;
     var kids=[];
     // top app bar: wordmark + theme toggle + settings
     kids.push(this.topBar(
@@ -2592,7 +2604,7 @@ class Component extends DCLogic {
     }
 
     if(!isRest){
-      kids.push(this.sectionRow("Today's plan", e('div',{className:'tap',onClick:function(){ self.go({editor:{view:'program'}}); },style:{display:'flex',alignItems:'center',gap:'5px',color:acc.tint,fontSize:'13px',fontWeight:700,padding:'6px 8px',borderRadius:'999px'}}, this.icon('tune',17,{color:acc.tint}), 'Edit')));
+      kids.push(this.sectionRow("Today's plan", e('div',{style:{display:'flex',gap:'6px'}}, this.dailyAddButton(day.id), e('div',{className:'tap',onClick:function(){ self.go({editor:{view:'program'}}); },style:{display:'flex',alignItems:'center',gap:'5px',color:acc.tint,fontSize:'13px',fontWeight:700,padding:'6px 8px',borderRadius:'999px'}}, this.icon('tune',17,{color:acc.tint}), 'Edit'))));
       var listCard=e('div',{key:'list',style:{background:t.surf,borderRadius:'26px',border:'1px solid '+t.outline,overflow:'hidden',marginBottom:'20px'}},
         day.exercises.map(function(ex,i){ var c=self.cat(self.state.accentKey);
           return e('div',{key:ex.id,style:Object.assign({display:'flex',alignItems:'center',gap:'14px',padding:'14px 16px',borderTop:i?'1px solid '+t.outline:'none'},self.stagger(i))},
@@ -2622,6 +2634,7 @@ class Component extends DCLogic {
     return this.screenShell('today',kids);
   }
   sectionRow(title,right){ var e=this.E,t=this.T(); return e('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',margin:'2px 6px 10px'}}, this.label(title), right); }
+  dailyAddButton(dayId){ var self=this,acc=this.T().acc; return this.E('button',{className:'tap','aria-label':'Add exercise for today',onClick:function(){self.go({todayPickDay:dayId});},style:{display:'flex',alignItems:'center',gap:'5px',color:acc.tint,fontSize:'13px',fontWeight:700,padding:'6px 8px',borderRadius:'999px',background:'transparent',border:'none'}},this.icon('add',17,{color:acc.tint}),'Add'); }
 
   // ============================================================ STUBS (filled in later stages)
   screenCardio(){ var e=this.E,t=this.T(),S=this.state,self=this; var teal=this.cat('teal');
@@ -2629,10 +2642,10 @@ class Component extends DCLogic {
     var perDay=this.cardioPerDay(14); var wk=this.cardioTotalsLast(7); var mo=this.cardioTotalsLast(30); var history=this.cardioHistory();
     var typeName={}; types.forEach(function(x){typeName[x.id]=x.name;});
     var anyData=perDay.some(function(d){return d.min>0;});
-    var kids=[this.topBar('Cardio',{big:true})];
-    var seg=e('div',{style:{display:'flex',gap:'6px',background:t.surf2,borderRadius:'17px',padding:'5px',marginBottom:'15px'}},
+    var kids=[this.topBar('Cardio',{big:true,right:e('button',{className:'tap','aria-label':'Add cardio exercise',onClick:function(){self.go({cardioCreateOpen:true,cardioName:''});},style:{width:'44px',height:'44px',borderRadius:'999px',display:'flex',alignItems:'center',justifyContent:'center',background:teal.cont,color:teal.tint,border:'none',flexShrink:0}},this.icon('add',24,{color:teal.tint}))})];
+    var seg=e('div',{className:'noscroll',style:{display:'flex',gap:'6px',overflowX:'auto',background:t.surf2,borderRadius:'17px',padding:'5px',marginBottom:'15px'}},
       types.map(function(ty){ var active=S.cardioPick===ty.id;
-        return e('div',{key:ty.id,className:'tap',onClick:function(){ self.go({cardioPick:ty.id}); },style:{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',padding:'11px 4px',borderRadius:'13px',background:active?'linear-gradient(140deg, '+teal.fill[0]+', '+teal.fill[1]+')':'transparent',color:active?'#fff':t.muted,fontSize:'12.5px',fontWeight:700,boxShadow:active?'0 5px 14px rgba(0,168,146,0.32)':'none'}}, self.icon(typeIcon[ty.id],17,{fill:active?1:0,color:active?'#fff':t.muted}), ty.name);
+        return e('div',{key:ty.id,className:'tap',onClick:function(){ self.go({cardioPick:ty.id}); },style:{flex:'1 0 auto',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',padding:'11px 8px',borderRadius:'13px',background:active?'linear-gradient(140deg, '+teal.fill[0]+', '+teal.fill[1]+')':'transparent',color:active?'#fff':t.muted,fontSize:'12.5px',fontWeight:700,whiteSpace:'nowrap',boxShadow:active?'0 5px 14px rgba(0,168,146,0.32)':'none'}}, self.icon(typeIcon[ty.id]||'directions_run',17,{fill:active?1:0,color:active?'#fff':t.muted}), ty.name);
       }));
     kids.push(this.card([ this.label('Log a session',{marginBottom:'13px'}), seg,
       e('div',{style:{display:'flex',gap:'10px',alignItems:'center'}},
@@ -2644,7 +2657,7 @@ class Component extends DCLogic {
     var chartInner=[e('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:'10px'}}, this.label('Minutes per day'), e('span',{style:{fontSize:'11px',color:t.faint,fontWeight:500}}, 'last 14 days'))];
     if(anyData) chartInner.push(this.barChart(perDay,teal,'cardiobar')); else chartInner.push(this.hint('Log a session above and your daily cardio will chart here.'));
     kids.push(this.card(chartInner,{padding:'20px 18px 16px',marginTop:'14px'}));
-    function breakdown(tot){ var parts=[]; ['treadmill','elliptical','cycling'].forEach(function(k){ if(tot.byType[k]>0) parts.push(typeName[k]+' '+tot.byType[k]); }); return parts.length?parts.join(' · '):'nothing yet'; }
+    function breakdown(tot){ var parts=[]; types.forEach(function(ty){ if(tot.byType[ty.id]>0) parts.push(ty.name+' '+tot.byType[ty.id]); }); return parts.length?parts.join(' · '):'nothing yet'; }
     kids.push(this.card([ e('div',{style:{display:'flex',gap:'12px'}}, this.statBlock(wk.total,'min','this week',teal), e('div',{style:{width:'1px',background:t.outline}}), this.statBlock(mo.total,'min','this month',teal)),
       e('div',{style:{fontSize:'12px',color:t.faint,textAlign:'center',marginTop:'14px',lineHeight:1.4}}, 'This week: '+breakdown(wk))],{padding:'20px',marginTop:'14px'}));
     kids.push(this.label('Recent sessions',{margin:'24px 6px 12px'}));
@@ -2667,12 +2680,12 @@ class Component extends DCLogic {
     kids.push(this.card(e('div',{style:{display:'flex',gap:'12px'}}, this.statBlock(tw,tw===1?'workout':'workouts','this week',amber), e('div',{style:{width:'1px',background:t.outline}}), this.statBlock(tm,tm===1?'workout':'workouts','this month',amber)),{padding:'20px'}));
     kids.push(this.bodyweightCard());
     var exInner=[this.label('Per exercise',{marginBottom:'13px'})];
+    var curName=exList.length?(exList.filter(function(x){return x.id===S.progPick;})[0]||exList[0]).name:'Select exercise';
+    exInner.push(e('div',{className:'tap',onClick:function(){ self.go({progPickOpen:true,progSelectMode:false,progSelected:{}}); },style:{display:'flex',alignItems:'center',gap:'10px',padding:'14px 16px',borderRadius:'18px',marginBottom:'16px',background:t.surf2,border:'1px solid '+t.outline}},
+      e('div',{style:{flex:1,fontSize:'15px',fontWeight:700,color:t.onSurf,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}, curName), this.icon('expand_more',22,{color:t.faint})));
     if(!exList.length){ exInner.push(this.hint('Once you log a workout, pick any exercise here to see your strength trend and what you did last time versus this time.')); }
     else {
-      var curName=(exList.filter(function(x){return x.id===S.progPick;})[0]||exList[0]).name;
-      exInner.push(e('div',{className:'tap',onClick:function(){ self.go({progPickOpen:true}); },style:{display:'flex',alignItems:'center',gap:'10px',padding:'14px 16px',borderRadius:'18px',marginBottom:'16px',background:t.surf2,border:'1px solid '+t.outline}},
-        e('div',{style:{flex:1,fontSize:'15px',fontWeight:700,color:t.onSurf,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}, curName), this.icon('expand_more',22,{color:t.faint})));
-      var pickEx=null; S.program.days.forEach(function(d){ d.exercises.forEach(function(x){ if(x.id===S.progPick) pickEx=x; }); });
+      var pickEx=this.exerciseMeta(S.progPick);
       var pickCore=!!(pickEx&&pickEx.rir==='—'), pickTimed=!!(pickEx&&pickEx.timed), weighted=!pickCore&&!pickTimed;
       if(weighted) exInner.push(this.e1rmBlock(S.progPick));
       var two=this.lastTwoFor(S.progPick);
@@ -2703,12 +2716,12 @@ class Component extends DCLogic {
   // ============================================================ ACTIVE SESSION
   sessionView(){
     var e=this.E, t=this.T(), S=this.state, self=this, acc=t.acc;
-    var day=this.dayById(S.sessionDay);
+    var day=this.workoutDay(S.sessionDay);
     if(!day||!day.exercises.length){ setTimeout(function(){self.endSession();},0); return e('div'); }
     if(S.curEx>=day.exercises.length) S.curEx=0;
     var ex=day.exercises[S.curEx]; var isCore=ex.rir==='—';
     var entry=this.ensureSessionLog(day.id); var rows=entry.sets[ex.id]; var prev=this.lastRowsFor(ex.id);
-    function setRow(i,patch){ rows[i]=Object.assign({},rows[i],patch); entry.sets[ex.id]=rows; self.save(); }
+    function setRow(i,patch){ var version=patch.done===false?{}:{progressVersion:(S.progressResets||{})[ex.id]||0}; rows[i]=Object.assign({},rows[i],patch,version); entry.sets[ex.id]=rows; self.save(); }
     function completeSet(i){ var r=rows[i]; var reps=r.r===''?(prev&&prev[i]?+prev[i].r:ex.repLow):+r.r; setRow(i,{r:reps,done:!r.done});
       var allDone=rows.every(function(s){return s.done;}); var allTop=rows.every(function(s){return +s.r>=ex.repHigh;}); self.forceUpdate();
       if(allDone&&allTop&&!S.progFired[ex.id]&&ex.rir!=='—'){ S.progFired[ex.id]=true; setTimeout(function(){ self.go({modal:{type:'progression',ex:ex}}); },400); } }
@@ -2778,7 +2791,7 @@ class Component extends DCLogic {
       ),
       e('div',{className:'noscroll',style:{position:'relative',flex:1,overflowY:'auto',padding:'6px 16px 12px'}},
         exCard,
-        this.label('Exercises · '+doneSets+'/'+totalSets+' sets',{margin:'22px 4px 10px'}),
+        e('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',margin:'22px 4px 10px'}},this.label('Exercises · '+doneSets+'/'+totalSets+' sets'),this.dailyAddButton(day.id)),
         nav
       ),
       e('div',{style:{position:'relative',flexShrink:0,padding:'10px 16px calc(20px + env(safe-area-inset-bottom))'}},
@@ -2882,12 +2895,12 @@ class Component extends DCLogic {
     return this.bottomSheet('settings',inner,close,{tint:t.surf,maxH:'92vh',z:81});
   }
   hasBridge(){ return typeof window!=='undefined' && window.Android && typeof window.Android.exportFile==='function'; }
-  exportBackup(){ var self=this; var data={program:this.state.program,logs:this.state.logs,bodyweight:this.state.bodyweight,cardio:this.state.cardio,phase:this.state.phase,version:2}; var json=JSON.stringify(data,null,2); var fname='dexter-backup-'+this.todayKey()+'.json';
+  exportBackup(){ var self=this; var data={program:this.state.program,logs:this.state.logs,dailyExercises:this.state.dailyExercises,progressResets:this.state.progressResets,customCardioTypes:this.state.customCardioTypes,bodyweight:this.state.bodyweight,cardio:this.state.cardio,phase:this.state.phase,version:3}; var json=JSON.stringify(data,null,2); var fname='dexter-backup-'+this.todayKey()+'.json';
     // Android WebView path: <a download> is a no-op there, so use the native SAF bridge.
     if(this.hasBridge()){ window._exportCb=function(ok){ self.toast(ok?'Backup saved':'Export cancelled', ok?'ok':'err'); try{ delete window._exportCb; }catch(e){ window._exportCb=null; } }; try { window.Android.exportFile(fname,json); } catch(e){ self.toast('Export failed','err'); } return; }
     // Browser fallback
     try { var blob=new Blob([json],{type:'application/json'}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },100); this.toast('Backup saved','ok'); } catch(e){ this.toast('Export failed','err'); } }
-  importBackup(text){ var self=this; try { var data=JSON.parse(text); if(typeof data!=='object'||!data) throw 0; var ok=('logs'in data)||('program'in data)||('phase'in data); if(!ok) throw 0; var S=this.state; if(data.program&&data.program.days&&data.program.days.length) S.program=data.program; if(data.logs) S.logs=data.logs; if(data.bodyweight) S.bodyweight=data.bodyweight; if(data.cardio) S.cardio=data.cardio; if(data.phase) S.phase=data.phase; this.save(); this.go({importOpen:false}); this.toast('Backup restored','ok'); } catch(e){ this.toast('Import failed — not a valid backup','err'); } }
+  importBackup(text){ var self=this; try { var data=JSON.parse(text); if(typeof data!=='object'||!data) throw 0; var ok=('logs'in data)||('program'in data)||('phase'in data); if(!ok) throw 0; var S=this.state; if(data.program&&data.program.days&&data.program.days.length) S.program=data.program; if(data.logs){S.logs=data.logs;S.dailyExercises=data.dailyExercises||{};S.progressResets=data.progressResets||{};} if(data.bodyweight) S.bodyweight=data.bodyweight; if(data.cardio){S.cardio=data.cardio;S.customCardioTypes=data.customCardioTypes||[];S.cardioPick='treadmill';} if(data.phase) S.phase=data.phase; this.save(); this.go({importOpen:false,progPick:null}); this.toast('Backup restored','ok'); } catch(e){ this.toast('Import failed — not a valid backup','err'); } }
   swap(arr,i,j){ if(j<0||j>=arr.length) return; var tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; }
   genId(p){ return (p||'id')+'-'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36); }
   newExercise(name,primary,assist){ return {id:this.genId('ex'),name:name,primary:primary,assist:assist||'—',sets:3,repLow:8,repHigh:12,rir:'1–2',disc:false,stretch:false,timed:false,ref:'Controlled tempo, full range, stop at the prescribed RIR.'}; }
@@ -2989,20 +3002,40 @@ class Component extends DCLogic {
     );
     return this.bottomSheet('pickday',inner,close,{tint:t.surf,maxH:'80vh'});
   }
-  exPickerSheet(){ var e=this.E,t=this.T(),S=this.state,self=this,acc=t.acc; function close(){ self.go({progPickOpen:false}); }
-    var list=this.allLoggedExercises();
+  todayExerciseSheet(){ var e=this.E,t=this.T(),S=this.state,self=this,acc=t.acc,dayId=S.todayPickDay; function close(){self.go({todayPickDay:null});} var list=this.availableDailyExercises(dayId);
     var inner=e('div',{className:'noscroll',style:{overflowY:'auto'}},
-      e('div',{style:{fontFamily:"'Roboto Flex',sans-serif",fontSize:'22px',fontWeight:800,color:t.onSurf,marginBottom:'16px'}}, 'Choose exercise'),
-      list.map(function(x){ var active=x.id===S.progPick; return e('div',{key:x.id,className:'tap',onClick:function(){ self.go({progPick:x.id,progPickOpen:false}); },style:{display:'flex',alignItems:'center',gap:'12px',padding:'15px',borderRadius:'18px',marginBottom:'8px',background:active?acc.cont:t.surf2,border:'1px solid '+(active?'transparent':t.outline)}},
-        e('div',{style:{flex:1,fontSize:'15px',fontWeight:700,color:active?(t.dark?acc.tint:acc.onCont):t.onSurf}}, x.name), active?self.icon('check',20,{color:t.dark?acc.tint:acc.onCont,wght:700}):null); })
+      e('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px',marginBottom:'12px'}},e('div',{style:{fontFamily:"'Roboto Flex',sans-serif",fontSize:'22px',fontWeight:800,color:t.onSurf}},'Add exercise'),this.iconBtn('close',close,{icon:20})),
+      this.hint('Added for today only. Your saved routine stays the same.'),
+      list.length?list.map(function(ex){return e('button',{key:ex.id,className:'tap',onClick:function(){if(self.addDailyExercise(dayId,ex.id)){close();self.toast(ex.name+' added for today','ok');}},style:{width:'100%',display:'flex',alignItems:'center',gap:'12px',textAlign:'left',padding:'15px',borderRadius:'18px',marginTop:'8px',background:t.surf2,border:'1px solid '+t.outline}},
+        e('div',{style:{flex:1,minWidth:0}},e('div',{style:{fontSize:'15px',fontWeight:700,color:t.onSurf}},ex.name),e('div',{style:{fontSize:'12px',color:t.faint,marginTop:'3px'}},ex.primary+' · '+ex.sets+' sets')),self.icon('add',20,{color:acc.tint}));}):this.hint('No other saved exercises available. Add exercises to your program to make them available here.')
+    ); return this.bottomSheet('today-exercises',inner,close,{maxH:'82vh'});
+  }
+  cardioCreateSheet(){ var e=this.E,t=this.T(),S=this.state,self=this,teal=this.cat('teal'); function close(){self.go({cardioCreateOpen:false,cardioName:''});} function create(){var type=self.createCardioType(S.cardioName);if(type){self.go({cardioPick:type.id,cardioCreateOpen:false,cardioName:''});self.toast(type.name+' added','ok');}}
+    var inner=e('div',null,
+      e('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px',marginBottom:'16px'}},e('div',{style:{fontFamily:"'Roboto Flex',sans-serif",fontSize:'22px',fontWeight:800,color:t.onSurf}},'Add cardio exercise'),this.iconBtn('close',close,{icon:20})),
+      this.label('Name',{marginBottom:'8px'}),
+      e('input',{'aria-label':'Cardio exercise name',defaultValue:S.cardioName,maxLength:60,placeholder:'e.g. Rowing',onInput:function(ev){S.cardioName=ev.target.value;},onKeyDown:function(ev){if(ev.key==='Enter')create();},style:{width:'100%',padding:'14px 15px',borderRadius:'15px',fontSize:'15px',color:t.onSurf,background:t.inputBg,border:'1.5px solid '+t.outline,fontFamily:'inherit'}}),
+      this.hint('Track minutes just like your other cardio exercises.'),
+      e('button',{className:'tap',onClick:create,style:{width:'100%',marginTop:'16px',padding:'15px',borderRadius:'999px',border:'none',background:'linear-gradient(140deg, '+teal.fill[0]+', '+teal.fill[1]+')',color:'#fff',fontSize:'15px',fontWeight:700}},'Create')
+    ); return this.bottomSheet('cardio-create',inner,close,{maxH:'82vh'});
+  }
+  exPickerSheet(){ var e=this.E,t=this.T(),S=this.state,self=this,acc=t.acc; function close(){ self.go({progPickOpen:false,progSelectMode:false,progSelected:{}}); }
+    var list=this.allLoggedExercises(),selected=list.filter(function(x){return S.progSelected[x.id];});
+    var inner=e('div',{className:'noscroll',style:{overflowY:'auto'}},
+      e('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px',marginBottom:'16px'}},e('div',{style:{fontFamily:"'Roboto Flex',sans-serif",fontSize:'22px',fontWeight:800,color:t.onSurf}}, 'Choose exercise'),list.length?e('button',{className:'tap',onClick:function(){self.go({progSelectMode:!S.progSelectMode,progSelected:{}});},style:{padding:'8px 12px',borderRadius:'999px',border:'none',fontSize:'13px',fontWeight:700,color:acc.tint,background:acc.cont}},S.progSelectMode?'Cancel':'Select'):this.iconBtn('close',close,{icon:20})),
+      S.progSelectMode?this.hint('Select exercises to delete their progress. Workout History is kept.'):null,
+      !list.length?this.hint('No exercise progress to select. Log new sets to start tracking.'):null,
+      list.map(function(x){ var active=S.progSelectMode?!!S.progSelected[x.id]:x.id===S.progPick; function choose(){if(S.progSelectMode){S.progSelected[x.id]=!S.progSelected[x.id];self.forceUpdate();}else{self.go({progPick:x.id,progPickOpen:false});}} return e('div',{key:x.id,className:'tap',role:S.progSelectMode?'checkbox':'button','aria-checked':S.progSelectMode?active:undefined,tabIndex:0,onClick:choose,onKeyDown:function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();choose();}},style:{display:'flex',alignItems:'center',gap:'12px',padding:'15px',borderRadius:'18px',marginBottom:'8px',background:active?acc.cont:t.surf2,border:'1px solid '+(active?'transparent':t.outline)}},
+        S.progSelectMode?self.icon(active?'check_box':'check_box_outline_blank',22,{color:active?acc.tint:t.faint}):null,e('div',{style:{flex:1,fontSize:'15px',fontWeight:700,color:active?(t.dark?acc.tint:acc.onCont):t.onSurf}}, x.name), !S.progSelectMode&&active?self.icon('check',20,{color:t.dark?acc.tint:acc.onCont,wght:700}):null); }),
+      S.progSelectMode&&selected.length?e('button',{className:'tap',onClick:function(){self.resetExerciseProgress(selected.map(function(x){return x.id;}));self.go({progSelectMode:false,progSelected:{}});self.toast('Progress deleted · History kept','ok');},style:{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',padding:'14px',marginTop:'12px',borderRadius:'999px',border:'none',fontSize:'14px',fontWeight:700,color:t.dangerT,background:t.dangerC}},self.icon('delete',18,{color:t.dangerT}),'Delete progress ('+selected.length+')'):null
     );
     return this.bottomSheet('expicker',inner,close,{tint:t.surf,maxH:'82vh'});
   }
   dayDetailSheet(){ var e=this.E,t=this.T(),S=this.state,self=this; var date=S.dayDetail; var en=this.state.logs[date]; function close(){ self.go({dayDetail:null}); }
-    var s=this.daySummary(date); var day=this.dayById(en.day);
+    var s=this.daySummary(date); var day=this.workoutDay(en.day,date);
     var order=day?day.exercises.map(function(x){return x.id;}):Object.keys(en.sets); Object.keys(en.sets||{}).forEach(function(id){ if(order.indexOf(id)<0) order.push(id); });
     var nameById={},metaById={}; if(day) day.exercises.forEach(function(x){nameById[x.id]=x.name;metaById[x.id]=x;});
-    var tiles=order.map(function(exId){ var rows=(en.sets||{})[exId]||[]; var done=rows.filter(function(r){return self.setCounts(r);}); var name=nameById[exId]||self.prettyId(exId); var meta=metaById[exId]; var isCore=meta&&meta.rir==='—';
+    var tiles=order.map(function(exId){ var rows=(en.sets||{})[exId]||[]; var done=rows.filter(function(r){return self.setCounts(r);}); var meta=metaById[exId]||self.exerciseMeta(exId,date); var name=nameById[exId]||(meta?meta.name:self.prettyId(exId)); var isCore=meta&&meta.rir==='—';
       return e('div',{key:exId,style:{padding:'14px 15px',marginBottom:'9px',borderRadius:'18px',background:t.surf2,border:'1px solid '+t.outline,opacity:done.length?1:0.55}},
         e('div',{style:{fontSize:'14.5px',fontWeight:700,color:t.onSurf,marginBottom:done.length?'9px':0}}, name),
         done.length?e('div',{style:{display:'flex',flexWrap:'wrap',gap:'6px'}}, done.map(function(r,i){ return e('div',{key:i,style:{padding:'5px 11px',borderRadius:'10px',fontSize:'12.5px',fontWeight:700,color:t.muted,background:t.surf}}, isCore?(r.r+(meta&&meta.timed?' s':' reps')):(+r.w>0?r.w+' kg × '+r.r:r.r+' reps')); })):e('div',{style:{fontSize:'12px',color:t.faint}}, 'skipped'));
