@@ -1,0 +1,629 @@
+{
+  "kind": "Mathematical models of actual HTML tokens, not pixel or physical-device certification",
+  "rows": [
+    {
+      "theme": "dark",
+      "accent": "violet",
+      "ctaRatio": 8.561393618415169,
+      "opaqueSecondaryMinRatio": 7.071467398996332,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            29.64,
+            29.64,
+            31.200000000000003
+          ],
+          "secondaryRatio": 8.482198761653025,
+          "labelRatio": 15.352962260088376,
+          "selectedTabRatio": 6.887383974282542
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            35.8,
+            35.8,
+            37.800000000000004
+          ],
+          "secondaryRatio": 7.88144687893495,
+          "labelRatio": 14.265588426696834,
+          "selectedTabRatio": 6.36552464081357
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            39.32,
+            39.32,
+            41.32
+          ],
+          "secondaryRatio": 7.533429349880598,
+          "labelRatio": 13.635669211224522,
+          "selectedTabRatio": 6.074947459908485
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            34.92,
+            34.92,
+            36.77333333333333
+          ],
+          "secondaryRatio": 7.969123491038936,
+          "labelRatio": 14.42428498103961,
+          "selectedTabRatio": 6.4400333056687655
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "accent": "teal",
+      "ctaRatio": 10.522769739880538,
+      "opaqueSecondaryMinRatio": 7.071467398996332,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            29.64,
+            29.64,
+            31.200000000000003
+          ],
+          "secondaryRatio": 8.482198761653025,
+          "labelRatio": 15.352962260088376,
+          "selectedTabRatio": 8.324460250264346
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            35.8,
+            35.8,
+            37.800000000000004
+          ],
+          "secondaryRatio": 7.88144687893495,
+          "labelRatio": 14.265588426696834,
+          "selectedTabRatio": 7.686676349141219
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            39.32,
+            39.32,
+            41.32
+          ],
+          "secondaryRatio": 7.533429349880598,
+          "labelRatio": 13.635669211224522,
+          "selectedTabRatio": 7.332616602174806
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            34.92,
+            34.92,
+            36.77333333333333
+          ],
+          "secondaryRatio": 7.969123491038936,
+          "labelRatio": 14.42428498103961,
+          "selectedTabRatio": 7.777499808607135
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "accent": "coral",
+      "ctaRatio": 9.300144250650552,
+      "opaqueSecondaryMinRatio": 7.071467398996332,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            29.64,
+            29.64,
+            31.200000000000003
+          ],
+          "secondaryRatio": 8.482198761653025,
+          "labelRatio": 15.352962260088376,
+          "selectedTabRatio": 7.438890833564524
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            35.8,
+            35.8,
+            37.800000000000004
+          ],
+          "secondaryRatio": 7.88144687893495,
+          "labelRatio": 14.265588426696834,
+          "selectedTabRatio": 6.873485847973833
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            39.32,
+            39.32,
+            41.32
+          ],
+          "secondaryRatio": 7.533429349880598,
+          "labelRatio": 13.635669211224522,
+          "selectedTabRatio": 6.55867057156035
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            34.92,
+            34.92,
+            36.77333333333333
+          ],
+          "secondaryRatio": 7.969123491038936,
+          "labelRatio": 14.42428498103961,
+          "selectedTabRatio": 6.954043848964592
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "accent": "amber",
+      "ctaRatio": 10.919428462976276,
+      "opaqueSecondaryMinRatio": 7.071467398996332,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            29.64,
+            29.64,
+            31.200000000000003
+          ],
+          "secondaryRatio": 8.482198761653025,
+          "labelRatio": 15.352962260088376,
+          "selectedTabRatio": 8.601346235754361
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            35.8,
+            35.8,
+            37.800000000000004
+          ],
+          "secondaryRatio": 7.88144687893495,
+          "labelRatio": 14.265588426696834,
+          "selectedTabRatio": 7.940516146883297
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            39.32,
+            39.32,
+            41.32
+          ],
+          "secondaryRatio": 7.533429349880598,
+          "labelRatio": 13.635669211224522,
+          "selectedTabRatio": 7.573566834028268
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            34.92,
+            34.92,
+            36.77333333333333
+          ],
+          "secondaryRatio": 7.969123491038936,
+          "labelRatio": 14.42428498103961,
+          "selectedTabRatio": 8.034425003911279
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "accent": "pink",
+      "ctaRatio": 8.623332157051536,
+      "opaqueSecondaryMinRatio": 7.071467398996332,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            29.64,
+            29.64,
+            31.200000000000003
+          ],
+          "secondaryRatio": 8.482198761653025,
+          "labelRatio": 15.352962260088376,
+          "selectedTabRatio": 6.952461217079084
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            35.8,
+            35.8,
+            37.800000000000004
+          ],
+          "secondaryRatio": 7.88144687893495,
+          "labelRatio": 14.265588426696834,
+          "selectedTabRatio": 6.427360532769148
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            39.32,
+            39.32,
+            41.32
+          ],
+          "secondaryRatio": 7.533429349880598,
+          "labelRatio": 13.635669211224522,
+          "selectedTabRatio": 6.134567611208298
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            34.92,
+            34.92,
+            36.77333333333333
+          ],
+          "secondaryRatio": 7.969123491038936,
+          "labelRatio": 14.42428498103961,
+          "selectedTabRatio": 6.502296535611148
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "accent": "blue",
+      "ctaRatio": 8.776204281941897,
+      "opaqueSecondaryMinRatio": 7.071467398996332,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            29.64,
+            29.64,
+            31.200000000000003
+          ],
+          "secondaryRatio": 8.482198761653025,
+          "labelRatio": 15.352962260088376,
+          "selectedTabRatio": 7.045267117664035
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            35.8,
+            35.8,
+            37.800000000000004
+          ],
+          "secondaryRatio": 7.88144687893495,
+          "labelRatio": 14.265588426696834,
+          "selectedTabRatio": 6.510614877052996
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            39.32,
+            39.32,
+            41.32
+          ],
+          "secondaryRatio": 7.533429349880598,
+          "labelRatio": 13.635669211224522,
+          "selectedTabRatio": 6.2130464658343305
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            34.92,
+            34.92,
+            36.77333333333333
+          ],
+          "secondaryRatio": 7.969123491038936,
+          "labelRatio": 14.42428498103961,
+          "selectedTabRatio": 6.586927383208353
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "accent": "violet",
+      "ctaRatio": 6.076232628568874,
+      "opaqueSecondaryMinRatio": 5.736087915729874,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            251.88,
+            251.88,
+            253.08
+          ],
+          "secondaryRatio": 6.349016341485359,
+          "labelRatio": 17.596365412692563,
+          "selectedTabRatio": 5.490235152903372
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            255.0,
+            255.0,
+            255.0
+          ],
+          "secondaryRatio": 6.515601188210558,
+          "labelRatio": 18.058057063419707,
+          "selectedTabRatio": 5.630553382542372
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            251.4,
+            251.4,
+            252.60000000000002
+          ],
+          "secondaryRatio": 6.322895818307419,
+          "labelRatio": 17.523972108613872,
+          "selectedTabRatio": 5.468212324755083
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            252.76,
+            252.76,
+            253.56
+          ],
+          "secondaryRatio": 6.395487166460497,
+          "labelRatio": 17.72515979174444,
+          "selectedTabRatio": 5.529377661173476
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "accent": "teal",
+      "ctaRatio": 6.080193284455361,
+      "opaqueSecondaryMinRatio": 5.736087915729874,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            251.88,
+            251.88,
+            253.08
+          ],
+          "secondaryRatio": 6.349016341485359,
+          "labelRatio": 17.596365412692563,
+          "selectedTabRatio": 5.490467279253765
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            255.0,
+            255.0,
+            255.0
+          ],
+          "secondaryRatio": 6.515601188210558,
+          "labelRatio": 18.058057063419707,
+          "selectedTabRatio": 5.630892471458081
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            251.4,
+            251.4,
+            252.60000000000002
+          ],
+          "secondaryRatio": 6.322895818307419,
+          "labelRatio": 17.523972108613872,
+          "selectedTabRatio": 5.46843856571633
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            252.76,
+            252.76,
+            253.56
+          ],
+          "secondaryRatio": 6.395487166460497,
+          "labelRatio": 17.72515979174444,
+          "selectedTabRatio": 5.529643262859192
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "accent": "coral",
+      "ctaRatio": 5.39508214187146,
+      "opaqueSecondaryMinRatio": 5.736087915729874,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            251.88,
+            251.88,
+            253.08
+          ],
+          "secondaryRatio": 6.349016341485359,
+          "labelRatio": 17.596365412692563,
+          "selectedTabRatio": 4.879565949296743
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            255.0,
+            255.0,
+            255.0
+          ],
+          "secondaryRatio": 6.515601188210558,
+          "labelRatio": 18.058057063419707,
+          "selectedTabRatio": 5.0043761840608605
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            251.4,
+            251.4,
+            252.60000000000002
+          ],
+          "secondaryRatio": 6.322895818307419,
+          "labelRatio": 17.523972108613872,
+          "selectedTabRatio": 4.860000356888993
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            252.76,
+            252.76,
+            253.56
+          ],
+          "secondaryRatio": 6.395487166460497,
+          "labelRatio": 17.72515979174444,
+          "selectedTabRatio": 4.914390460266603
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "accent": "amber",
+      "ctaRatio": 6.6777466698617465,
+      "opaqueSecondaryMinRatio": 5.736087915729874,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            251.88,
+            251.88,
+            253.08
+          ],
+          "secondaryRatio": 6.349016341485359,
+          "labelRatio": 17.596365412692563,
+          "selectedTabRatio": 6.026528826160282
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            255.0,
+            255.0,
+            255.0
+          ],
+          "secondaryRatio": 6.515601188210558,
+          "labelRatio": 18.058057063419707,
+          "selectedTabRatio": 6.180854600646061
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            251.4,
+            251.4,
+            252.60000000000002
+          ],
+          "secondaryRatio": 6.322895818307419,
+          "labelRatio": 17.523972108613872,
+          "selectedTabRatio": 6.002342926639781
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            252.76,
+            252.76,
+            253.56
+          ],
+          "secondaryRatio": 6.395487166460497,
+          "labelRatio": 17.72515979174444,
+          "selectedTabRatio": 6.069590714000071
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "accent": "pink",
+      "ctaRatio": 6.016819108105558,
+      "opaqueSecondaryMinRatio": 5.736087915729874,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            251.88,
+            251.88,
+            253.08
+          ],
+          "secondaryRatio": 6.349016341485359,
+          "labelRatio": 17.596365412692563,
+          "selectedTabRatio": 5.395669867595232
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            255.0,
+            255.0,
+            255.0
+          ],
+          "secondaryRatio": 6.515601188210558,
+          "labelRatio": 18.058057063419707,
+          "selectedTabRatio": 5.534058961535939
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            251.4,
+            251.4,
+            252.60000000000002
+          ],
+          "secondaryRatio": 6.322895818307419,
+          "labelRatio": 17.523972108613872,
+          "selectedTabRatio": 5.373964903344828
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            252.76,
+            252.76,
+            253.56
+          ],
+          "secondaryRatio": 6.395487166460497,
+          "labelRatio": 17.72515979174444,
+          "selectedTabRatio": 5.434278420835056
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "accent": "blue",
+      "ctaRatio": 5.8027084510249685,
+      "opaqueSecondaryMinRatio": 5.736087915729874,
+      "glassModels": [
+        {
+          "backdrop": "pageBg",
+          "compositedGlassRGB": [
+            251.88,
+            251.88,
+            253.08
+          ],
+          "secondaryRatio": 6.349016341485359,
+          "labelRatio": 17.596365412692563,
+          "selectedTabRatio": 5.235982040215698
+        },
+        {
+          "backdrop": "surf",
+          "compositedGlassRGB": [
+            255.0,
+            255.0,
+            255.0
+          ],
+          "secondaryRatio": 6.515601188210558,
+          "labelRatio": 18.058057063419707,
+          "selectedTabRatio": 5.369837580704383
+        },
+        {
+          "backdrop": "surf2",
+          "compositedGlassRGB": [
+            251.4,
+            251.4,
+            252.60000000000002
+          ],
+          "secondaryRatio": 6.322895818307419,
+          "labelRatio": 17.523972108613872,
+          "selectedTabRatio": 5.214968923296429
+        },
+        {
+          "backdrop": "busy checker average",
+          "compositedGlassRGB": [
+            252.76,
+            252.76,
+            253.56
+          ],
+          "secondaryRatio": 6.395487166460497,
+          "labelRatio": 17.72515979174444,
+          "selectedTabRatio": 5.273320009594526
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dexter rim refraction evaluation</title>
+<style>
+* { box-sizing:border-box; }
+body { margin:0; padding:28px 16px; background:#f2f2f7; color:#161619; font:17px/1.4 system-ui,sans-serif; }
+main { max-width:390px; margin:auto; }
+h1 { font-size:24px; }
+.geometry { padding:35px 12px; border-radius:28px; background:repeating-conic-gradient(#6593a9 0% 25%,#ece3d8 0% 50%) 0 0/24px 24px; }
+.control { position:relative; isolation:isolate; border-radius:999px; margin:16px 0; min-height:66px; display:flex; align-items:center; justify-content:space-around; color:#161619; }
+.material { position:absolute; z-index:-1; inset:0; border-radius:inherit; background:rgba(255,255,255,.76); backdrop-filter:blur(18px) saturate(1.25); box-shadow:0 5px 20px #0002; }
+.material::after { content:''; position:absolute; inset:0; border-radius:inherit; box-shadow:inset 0 1px #ffffffc0,inset 0 -1px #0000000b; }
+.control span { position:relative; font-size:14px; }
+.standalone { width:180px; margin:35px auto 10px; min-height:52px; }
+.enhanced .material { backdrop-filter:url(#tab-rim) blur(18px) saturate(1.25); }
+.enhanced .standalone .material { backdrop-filter:url(#button-rim) blur(18px) saturate(1.25); }
+button { padding:12px 20px; border:0; border-radius:999px; background:#8940b4; color:white; font:inherit; }
+</style>
+<main>
+<h1>Rim refraction probe</h1>
+<p>Compare the baseline and enhanced shallow rim over a geometric backdrop. Labels occupy a separate layer. This prototype is excluded from the Android asset.</p>
+<svg width="0" height="0" aria-hidden="true">
+<defs>
+<filter id="tab-rim" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+<feImage id="tab-map" result="rim" preserveAspectRatio="none" x="0" y="0" width="100%" height="100%"/>
+<feDisplacementMap in="SourceGraphic" in2="rim" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+</filter>
+<filter id="button-rim" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+<feImage id="button-map" result="rim" preserveAspectRatio="none" x="0" y="0" width="100%" height="100%"/>
+<feDisplacementMap in="SourceGraphic" in2="rim" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+</filter>
+</defs></svg>
+<div class="geometry">
+<div class="control tab"><div class="material"></div><span>Today</span><span>Cardio</span><span>Progress</span><span>History</span></div>
+<div class="control standalone"><div class="material"></div><span>Start session</span></div>
+</div>
+<p><button type="button" id="toggle">Compare enhanced rim</button></p>
+<p id="state" role="status">Baseline material</p>
+</main>
+<script>
+// Maps are immutable between resizes; each size has its own filter and observer.
+function mapFor(node,image) {
+  const w=Math.ceil(node.offsetWidth),h=Math.ceil(node.offsetHeight),radius=h/2;
+  const canvas=document.createElement('canvas'); canvas.width=w;canvas.height=h;
+  const context=canvas.getContext('2d'),map=context.createImageData(w,h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++) {
+    const cx=Math.min(w-radius,Math.max(radius,x)),cy=radius;
+    const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy),rim=Math.max(0,1-Math.abs(radius-d)/6);
+    const index=(y*w+x)*4;
+    map.data[index]=128+(d?dx/d:0)*rim*80;
+    map.data[index+1]=128+(d?dy/d:0)*rim*80;
+    map.data[index+2]=128;map.data[index+3]=255;
+  }
+  context.putImageData(map,0,0);image.setAttribute('href',canvas.toDataURL());
+}
+const observers=[];
+for(const [selector,id] of [['.tab','tab-map'],['.standalone','button-map']]) {
+  const node=document.querySelector(selector),image=document.getElementById(id);
+  mapFor(node,image);const observer=new ResizeObserver(()=>mapFor(node,image));observer.observe(node);observers.push(observer);
+}
+window.addEventListener('pagehide',()=>observers.forEach(observer=>observer.disconnect()),{once:true});
+document.getElementById('toggle').onclick=()=> {
+  const enabled=document.body.classList.toggle('enhanced');
+  document.getElementById('state').textContent=enabled?'Candidate shallow rim':'Baseline material';
+};
+</script>
+</html>

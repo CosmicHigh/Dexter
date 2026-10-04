@@ -52,15 +52,15 @@ async function main() {
     await page.getByText('2 exercises · 3 sets',{exact:true}).waitFor();
     await page.getByRole('button', { name:/Start session/ }).click();
     await page.getByText('Dumbbell curls',{exact:true}).click();
-    const checks = page.locator('div.tap').filter({ has:page.locator('span.msr').filter({hasText:/^check$/}) });
+    const checks = page.getByRole('button', { name:/^Complete set \d+$/ });
     await checks.first().click();
     const withWorkout = await saved();
     const today = Object.keys(withWorkout.logs).sort().at(-1);
     assert.equal(withWorkout.logs[today].sets.curl[0].w,12.5);
     assert.equal(withWorkout.logs[today].sets.curl[0].done,true);
     await page.getByRole('button', { name:/Finish session/ }).click();
-    await page.getByText('Progress',{exact:true}).click();
-    await page.getByText('Dumbbell curls',{exact:true}).click();
+    await page.getByRole('tab',{name:'Progress',exact:true}).click();
+    await page.getByRole('button',{name:'Dumbbell curls',exact:true}).click();
     await page.getByRole('button', { name:'Select',exact:true }).click();
     await page.getByRole('checkbox').click();
     await page.waitForTimeout(650);
@@ -68,11 +68,11 @@ async function main() {
     await page.getByRole('button', { name:/Delete progress \(1\)/ }).click();
     assert.deepEqual((await saved()).logs,withWorkout.logs);
     await page.getByText('No exercise progress to select. Log new sets to start tracking.',{exact:true}).waitFor();
-    await page.locator('div.tap').filter({has:page.locator('span.msr').filter({hasText:/^close$/})}).click();
-    await page.getByText('History',{exact:true}).click();
+    await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();
+    await page.getByRole('tab',{name:'History',exact:true}).click();
     await page.getByText('Upper A',{exact:true}).waitFor();
     await page.getByText('Upper B',{exact:true}).waitFor();
-    await page.getByText('Cardio',{exact:true}).click();
+    await page.getByRole('tab',{name:'Cardio',exact:true}).click();
     await page.getByRole('button', { name:'Add cardio exercise' }).click();
     await page.getByRole('textbox',{name:'Cardio exercise name'}).fill('Rowing');
     await page.getByRole('button',{name:'Create',exact:true}).click();
@@ -80,7 +80,7 @@ async function main() {
     await page.getByRole('button',{name:'Log',exact:true}).click();
     await page.getByText('This week: Rowing 18',{exact:true}).waitFor();
     await page.reload();
-    await page.getByText('Cardio',{exact:true}).click();
+    await page.getByRole('tab',{name:'Cardio',exact:true}).click();
     await page.getByText('This week: Rowing 18',{exact:true}).waitFor();
     for (const width of [320,390,460]) {
       await page.setViewportSize({width,height:844});

@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-10-04T11:27:12Z",
+  "status": "official-capture-blocked-by-enforced-network-policy",
+  "officialSourceContentFetched": false,
+  "videoViewed": false,
+  "transcriptRead": false,
+  "motionObserved": false,
+  "sources": [
+    { "id": "A1", "url": "https://developer.apple.com/videos/play/wwdc2025/219/" },
+    { "id": "A2", "url": "https://developer.apple.com/videos/play/wwdc2025/284/" },
+    { "id": "A3", "url": "https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass" }
+  ],
+  "captureTargets": [
+    { "component": "tab-bar", "source": "A2", "frame": null, "timestamp": null },
+    { "component": "toolbar", "source": "A2", "frame": null, "timestamp": null },
+    { "component": "switch", "source": "A2", "frame": null, "timestamp": null },
+    { "component": "grouped-form", "source": "A2", "frame": null, "timestamp": null },
+    { "component": "medium-sheet", "source": "A2", "frame": null, "timestamp": null },
+    { "component": "large-sheet", "source": "A2", "frame": null, "timestamp": null }
+  ],
+  "font": {
+    "package": "@fontsource-variable/inter",
+    "version": "5.3.0",
+    "path": "/tmp/dexter-assets/package/files/inter-latin-wght-normal.woff2",
+    "bytes": 48256,
+    "sha256": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62",
+    "license": "OFL-1.1",
+    "licensePath": "/tmp/dexter-assets/package/LICENSE"
+  }
+}

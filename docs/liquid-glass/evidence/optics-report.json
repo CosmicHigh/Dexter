@@ -1,0 +1,11 @@
+{
+  "browser": "151.0.7922.173",
+  "candidateBackdropFilter": "url(\"#tab-rim\") blur(18px) saturate(1.25)",
+  "stableLabelGeometry": true,
+  "uniqueFilterIDs": [
+    "tab-rim",
+    "button-rim"
+  ],
+  "retainedInProduct": false,
+  "decision": "Disabled in production: CSS accepts the URL recipe and both rendering variants are captured for inspection, but official reference comparison and the required Android optical/performance gate are unavailable. Ship the real blur baseline."
+}
