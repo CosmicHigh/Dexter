@@ -42,11 +42,12 @@ async function main() {
     const originalProgram = JSON.stringify((await saved()).program);
 
     await page.getByRole('button', { name:'Add exercise for today' }).click();
-    assert.equal(await page.getByRole('button', { name:/Dumbbell curls/ }).count(),1);
+    assert.equal(await page.getByRole('button', { name:/^Dumbbell curls/ }).count(),1);
+    assert.equal(await page.getByRole('button', { name:'Edit saved exercise · Dumbbell curls', exact:true }).count(),1);
     assert.equal(await page.getByRole('button', { name:/Bench press/ }).count(),0);
     await page.waitForTimeout(650);
     await page.screenshot({path:path.join(screenshotDir,'dexter-add-exercise.png')});
-    await page.getByRole('button', { name:/Dumbbell curls/ }).click();
+    await page.getByRole('button', { name:/^Dumbbell curls/ }).click();
     assert.equal(JSON.stringify((await saved()).program),originalProgram);
     await page.reload();
     await page.getByText('2 exercises · 3 sets',{exact:true}).waitFor();
