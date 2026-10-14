@@ -3521,10 +3521,20 @@ class Component extends DCLogic {
     S.exerciseHistory=Array.isArray(S.exerciseHistory)?S.exerciseHistory:[];var historicalIds=new Set(S.exerciseHistory.map(function(ex){return ex.id;}));
     var deleted=new Set(S.deletedExercises.map(function(ex){return ex.id;}));
     var defaults=new Map();this.defaultProgram().days.forEach(function(day){day.exercises.forEach(function(ex){defaults.set(ex.id,ex);});});
+    var assignedIds=new Set(),progressIds=new Set(),recoveryTemplate=this.newExercise('','Custom','—');
+    var recoveryFields=Object.keys(recoveryTemplate).filter(function(key){return key!=='id'&&key!=='name';});
+    S.program.days.forEach(function(day){(day.exercises||[]).forEach(function(ex){assignedIds.add(ex.id);});});
+    Object.values(S.dailyExercises||{}).forEach(function(days){Object.values(days||{}).forEach(function(exercises){(exercises||[]).forEach(function(ex){assignedIds.add(ex.id);});});});
+    Object.values(S.logs||{}).forEach(function(entry){Object.keys(entry&&entry.sets||{}).forEach(function(id){var version=(S.progressResets||{})[id]||0;if((entry.sets[id]||[]).some(function(row){return self.setCounts(row)&&(row.progressVersion||0)===version;}))progressIds.add(id);});});
+    function containsIdentity(ids,id){var canonical=self.canonicalExerciseId(id,S);return Array.from(ids).some(function(key){return self.canonicalExerciseId(key,S)===canonical;});}
+    function obsoletePlaceholder(ex){return /^ex-/.test(ex.id)&&ex.name===self.prettyId(ex.id)&&recoveryFields.every(function(key){return ex[key]===recoveryTemplate[key];})&&!containsIdentity(assignedIds,ex.id)&&!containsIdentity(progressIds,ex.id);}
     function add(ex){
       if(!ex||typeof ex.id!=='string')return;
       if(!historicalIds.has(ex.id)){historicalIds.add(ex.id);S.exerciseHistory.push(self.deepCopy(ex));}
       var id=self.canonicalExerciseId(ex.id,S);if(deleted.has(id)||deleted.has(ex.id))return;
+      // Previous recovery versions promoted empty and reset-only log IDs into saved exercises.
+      // Keep their metadata in History, while retaining explicitly used or customized records.
+      if(obsoletePlaceholder(ex))return;
       if(records.has(id)){S.exerciseAliases[ex.id]=id;return;}
       var name=self.exerciseNameKey(ex.name)?String(ex.name).trim().replace(/\s+/g,' '):(defaults.get(ex.id)||{}).name||self.prettyId(ex.id),key=self.exerciseNameKey(name),existing=names.get(key);
       if(existing){S.exerciseAliases[ex.id]=existing;S.exerciseAliases[id]=existing;return;}
@@ -3537,6 +3547,9 @@ class Component extends DCLogic {
     Object.values(S.logs||{}).forEach(function(entry){Object.keys(entry&&entry.sets||{}).forEach(function(id){
       var canonical=self.canonicalExerciseId(id,S);if(records.has(canonical)||deleted.has(canonical))return;
       var meta=(entry.exercises||[]).find(function(ex){return ex.id===id;})||defaults.get(id);
+      if(meta&&!historicalIds.has(id)){historicalIds.add(id);S.exerciseHistory.push(self.deepCopy(meta));}
+      if(meta){var shared=names.get(self.exerciseNameKey(meta.name));if(shared)S.exerciseAliases[id]=shared;}
+      if(!containsIdentity(progressIds,id))return;
       add(meta||Object.assign(self.newExercise(self.prettyId(id),'Custom','—'),{id:id}));
     });});
     S.exerciseLibrary=Array.from(records.values());
@@ -3969,7 +3982,7 @@ class Component extends DCLogic {
     var order=[],metaById=new Map(),seen=new Set(),planned=en.exercises&&en.exercises.length?en.exercises:day?day.exercises:[];
     planned.forEach(function(ex){var id=self.canonicalExerciseId(ex.id);if(!seen.has(id)){seen.add(id);order.push(id);metaById.set(id,ex);}});
     Object.keys(en.sets||{}).forEach(function(key){var id=self.canonicalExerciseId(key);if(!seen.has(id)){seen.add(id);order.push(id);}});
-    var tiles=order.map(function(exId){var done=[];Object.keys(en.sets||{}).forEach(function(id){if(self.canonicalExerciseId(id)!==exId)return;var meta=self.historicalExerciseMeta(id,date);(en.sets[id]||[]).forEach(function(row){if(self.setCounts(row))done.push({row:row,meta:row.historyMeta||meta});});});var meta=metaById.get(exId)||self.exerciseMeta(exId,date),name=meta&&meta.name?meta.name:self.prettyId(exId);
+    var tiles=order.map(function(exId){var done=[];Object.keys(en.sets||{}).forEach(function(id){if(self.canonicalExerciseId(id)!==exId)return;var meta=self.historicalExerciseMeta(id,date);(en.sets[id]||[]).forEach(function(row){if(self.setCounts(row))done.push({row:row,meta:row.historyMeta||meta});});});var meta=metaById.get(exId)||self.exerciseMeta(exId,date)||self.historicalExerciseMeta(exId,date),name=meta&&meta.name?meta.name:self.prettyId(exId);
       return e('section',{key:exId,className:'history-detail-row'},e('h3',{className:'row-title',style:{marginTop:0}},name),
         done.length?e('div',{className:'history-chips'},done.map(function(item,i){var r=item.row,meta=item.meta,isCore=meta&&meta.rir==='—';return e('span',{key:i,className:'history-chip'},isCore?(r.r+(meta&&meta.timed?' s':' reps')):(+r.w>0?r.w+' kg × '+r.r:r.r+(meta&&meta.timed?' s':' reps')));})):e('div',{className:'row-subtitle'},'skipped'));
     });

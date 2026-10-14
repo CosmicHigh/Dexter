@@ -104,6 +104,107 @@ test('legacy orphaned progress recovers pre-made names and creates editable save
   assert.equal(JSON.stringify(app.state.logs), JSON.stringify(history));
 });
 
+test('empty orphan log entries stay in History without becoming saved exercises', () => {
+  const logs = { '2026-10-03': { day: 'upperB', sets: {
+    'ex-empty-placeholder': [{ w: 20, r: '', done: false }],
+    'hammer-curl': [{ w: 25, r: 12, done: true }],
+  } } };
+  const { app } = fixture({ logs });
+  assert.ok(!app.savedExercises().some(ex => ex.id === 'ex-empty-placeholder'));
+  assert.equal(JSON.stringify(app.state.logs), JSON.stringify(logs));
+  assert.equal(app.allLoggedExercises().length, 1);
+});
+
+test('legacy reset orphan records are not recovered into the saved list', () => {
+  const logs = { '2026-10-03': { day: 'upperB', sets: {
+    'ex-retired-placeholder': [{ w: 15, r: 10, done: true }],
+  } } };
+  const resets = { 'ex-retired-placeholder': 1 };
+  const { app } = fixture({ logs, progressResets: resets, version: 2 });
+  assert.ok(!app.savedExercises().some(ex => ex.id === 'ex-retired-placeholder'));
+  assert.equal(app.allLoggedExercises().length, 0);
+  app.state.dayDetail = '2026-10-03';
+  assert.ok(text(app.dayDetailSheet()).includes('15 kg × 10'));
+  assert.equal(JSON.stringify(app.state.logs), JSON.stringify(logs));
+  assert.deepEqual(plain(app.state.progressResets), resets);
+});
+
+test('reset-only built-in orphan metadata preserves historical names, units and shared aliases in old backups', () => {
+  const program = fixture().app.defaultProgram(), ids = ['plank', 'lp-calf-raise', 'seated-leg-curl-b'];
+  for (const day of program.days) day.exercises = day.exercises.filter(ex => !ids.includes(ex.id));
+  const logs = { '2026-10-03': { day: 'lowerB', sets: {
+    plank: [{ w: 0, r: 45, done: true }],
+    'lp-calf-raise': [{ w: 50, r: 15, done: true }],
+    'seated-leg-curl-b': [{ w: 40, r: 12, done: true }],
+  } } };
+  const { app } = fixture({ program, logs, progressResets: Object.fromEntries(ids.map(id => [id, 1])), version: 2 });
+  assert.ok(!app.savedExercises().some(ex => ids.includes(ex.id)));
+  app.state.dayDetail = '2026-10-03';
+  const detail = text(app.dayDetailSheet());
+  assert.ok(detail.includes('45 s'));
+  assert.ok(detail.includes('Leg-Press Calf Raise'));
+  assert.ok(detail.includes('Seated Leg Curl'));
+  assert.equal(app.canonicalExerciseId('seated-leg-curl-b'), app.canonicalExerciseId('seated-leg-curl'));
+  assert.equal(app.allLoggedExercises().length, 0);
+  assert.equal(JSON.stringify(app.state.logs), JSON.stringify(logs));
+});
+
+test('previously generated empty and reset placeholders are cleaned up across reloads and backup restore', () => {
+  const original = fixture().app;
+  const placeholder = id => Object.assign(original.newExercise(original.prettyId(id), 'Custom', '—'), { id });
+  const empty = placeholder('ex-mqv18mk13tz'), retired = placeholder('ex-mrjae5lu3yp');
+  const logs = { '2026-10-03': { day: 'upperB', sets: {
+    [empty.id]: [{ w: 0, r: '', done: false }],
+    [retired.id]: [{ w: 7.5, r: 12, done: true }],
+  } } };
+  const history = [empty, retired];
+  const f = fixture({ exerciseLibrary: history, exerciseHistory: history, logs, progressResets: { [retired.id]: 1 } });
+  const assertClean = app => {
+    assert.ok(!app.savedExercises().some(ex => ex.id === empty.id || ex.id === retired.id));
+    assert.deepEqual(plain(app.state.exerciseHistory), plain(history.concat(original.state.exerciseHistory)));
+    assert.equal(JSON.stringify(app.state.logs), JSON.stringify(logs));
+    app.state.todayPickDay = 'upperA';
+    assert.ok(!text(app.todayExerciseSheet()).includes(empty.name));
+    app.state.editor = { view: 'addex', dayId: 'upperA' };
+    assert.ok(!text(app.editorSheet()).includes(retired.name));
+    app.state.dayDetail = '2026-10-03';
+    assert.ok(text(app.dayDetailSheet()).includes('7.5 kg × 12'));
+  };
+  assertClean(f.app); f.app.save(); assertClean(f.reload().app);
+  f.app.exportBackup();
+  const restored = fixture().app;
+  restored.importBackup(JSON.stringify(f.context.backup)); assertClean(restored);
+});
+
+test('current progress through an alias retains its recovered editable saved record', () => {
+  const original = fixture().app, id = 'ex-current-placeholder';
+  const placeholder = Object.assign(original.newExercise(original.prettyId(id), 'Custom', '—'), { id });
+  const { app } = fixture({ exerciseLibrary: [placeholder], exerciseAliases: { 'ex-old-placeholder': id },
+    logs: { '2026-10-03': { day: 'upperB', sets: {
+      'ex-old-placeholder': [{ w: 20, r: 10, done: true, progressVersion: 1 }],
+    } } }, progressResets: { 'ex-old-placeholder': 1 } });
+  assert.ok(app.savedExercises().some(ex => ex.id === id));
+  assert.equal(app.allLoggedExercises().find(ex => ex.id === id).name, placeholder.name);
+  assert.equal(app.seriesFor(id).length, 1);
+  app.updateExercise(id, { name: 'Recovered cable curl' });
+  assert.equal(app.exerciseMeta(id).name, 'Recovered cable curl');
+});
+
+test('unlogged named, customized and assigned exercises remain saved during placeholder cleanup', () => {
+  const original = fixture().app;
+  const placeholder = id => Object.assign(original.newExercise(original.prettyId(id), 'Custom', '—'), { id });
+  const named = Object.assign(placeholder('ex-named'), { name: 'Ex band rotation' });
+  const customized = Object.assign(placeholder('ex-customized'), { ref: 'My saved cue', sets: 5 });
+  const assigned = placeholder('ex-assigned'), daily = placeholder('ex-daily');
+  const program = original.deepCopy(original.state.program);
+  program.days[0].exercises.push(assigned);
+  const { app } = fixture({ program, exerciseLibrary: [named, customized, assigned, daily],
+    dailyExercises: { '2026-10-04': { upperA: [daily] } } });
+  for (const ex of [named, customized, assigned, daily]) assert.ok(app.savedExercises().some(saved => saved.id === ex.id));
+  assert.equal(app.exerciseMeta(customized.id).ref, 'My saved cue');
+  assert.equal(app.workoutDay('upperA').exercises.at(-1).id, daily.id);
+});
+
 test('legacy blank-name records retain their edited features and routine membership with or without logs', () => {
   for (const id of ['leg-extension', 'old-custom']) {
     const original = fixture().app;

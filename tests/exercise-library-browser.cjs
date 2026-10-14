@@ -31,9 +31,14 @@ async function main() {
     await page.goto(url);
     await page.getByRole('tab', { name: 'Today', exact: true }).waitFor();
     const program = await appCall(page, app => app.defaultProgram());
+    const placeholders = await appCall(page, app => ['ex-empty-placeholder', 'ex-retired-placeholder'].map(id => ({ ...app.newExercise(app.prettyId(id), 'Custom', '—'), id })));
     const history = {
       '2026-10-01': { day: 'lowerA', sets: { 'leg-extension': [{ w: 65, r: 15, done: true }] } },
-      '2026-10-02': { day: 'lowerA', sets: { 'seated-leg-curl': [{ w: 40, r: 12, done: true }] } },
+      '2026-10-02': { day: 'lowerA', sets: {
+        'seated-leg-curl': [{ w: 40, r: 12, done: true }],
+        'ex-empty-placeholder': [{ w: 0, r: '', done: false }],
+        'ex-retired-placeholder': [{ w: 9, r: 11, done: true }],
+      } },
       '2026-10-03': { day: 'lowerB', sets: { 'seated-leg-curl-b': [{ w: 45, r: 10, done: true }] } },
     };
     program.weekPlan = Array(7).fill('lowerA');
@@ -41,13 +46,17 @@ async function main() {
       if (ex.id === 'seated-leg-curl') ex.name = 'Lying Leg Curl';
       if (ex.id === 'seated-leg-curl-b') ex.name = 'lying LEG curl';
     }
-    await page.evaluate(data => localStorage.setItem('dexter.material.v1', JSON.stringify(data)), { program, logs: history });
+    await page.evaluate(data => localStorage.setItem('dexter.material.v1', JSON.stringify(data)), {
+      program, logs: history, exerciseLibrary: placeholders, exerciseHistory: placeholders,
+      progressResets: { 'ex-retired-placeholder': 1 },
+    });
     await page.reload();
 
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('dialog').getByText('Lower A', { exact: true }).click();
     await page.getByRole('button', { name: 'Remove exercise · Leg Extension', exact: true }).click();
     await page.getByRole('dialog').locator('.add-row').filter({ hasText: 'Add exercise' }).click();
+    for (const ex of placeholders) assert.equal(await page.getByRole('button', { name: 'Edit saved exercise · ' + ex.name, exact: true }).count(), 0);
     await page.getByRole('button', { name: 'Edit saved exercise · Leg Extension', exact: true }).click();
     await page.getByPlaceholder('Name', { exact: true }).fill('Leg Extension Revised');
     await page.getByRole('dialog').locator('textarea').fill('Saved exercise cue');
@@ -102,6 +111,7 @@ async function main() {
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('dexter.material.v1')));
     assert.deepEqual(saved.logs, history);
     assert.ok(!saved.exerciseLibrary.some(ex => /lying leg curl/i.test(ex.name)));
+    assert.ok(!saved.exerciseLibrary.some(ex => placeholders.some(old => old.id === ex.id)));
     await page.reload();
     await page.getByRole('tab', { name: 'Progress', exact: true }).click();
     await page.locator('.select-exercise').click();
@@ -111,7 +121,7 @@ async function main() {
     await page.getByRole('button', { name: /Thu 1 Oct/ }).click();
     await page.getByText('65 kg × 15', { exact: true }).waitFor();
     assert.deepEqual(errors, []);
-    process.stdout.write('Exercise library browser checks passed: remove, edit, re-add, daily reuse, case-insensitive merge, permanent deletion, named History and reloads.\n');
+    process.stdout.write('Exercise library browser checks passed: orphan placeholder cleanup, remove, edit, re-add, daily reuse, case-insensitive merge, permanent deletion, named History and reloads.\n');
   } finally {
     if (browser) await browser.close();
     await new Promise(resolve => server.close(resolve));
